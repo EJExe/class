@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CourseRole {
+  owner
+  member
+}
+
+enum ChannelType {
+  text
+}
+
+model User {
+  id           String         @id @default(uuid())
+  nickname     String         @unique
+  passwordHash String?
+  createdAt    DateTime       @default(now())
+  lastSeenAt   DateTime       @default(now())
+  sessions     Session[]
+  memberships  CourseMember[]
+  coursesOwned Course[]       @relation("CourseOwner")
+  channels     Channel[]      @relation("ChannelCreator")
+  messages     Message[]      @relation("MessageAuthor")
+  videoLinks   VideoRoomParticipant[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Course {
+  id           String         @id @default(uuid())
+  title        String
+  description  String?
+  ownerUserId  String
+  inviteCode   String         @unique
+  createdAt    DateTime       @default(now())
+  owner        User           @relation("CourseOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members      CourseMember[]
+  channels     Channel[]
+  videoRoom    VideoRoom?
+}
+
+model CourseMember {
+  id       String     @id @default(uuid())
+  courseId String
+  userId   String
+  role     CourseRole @default(member)
+  joinedAt DateTime   @default(now())
+  course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId])
+}
+
+model Channel {
+  id              String      @id @default(uuid())
+  courseId        String
+  name            String
+  type            ChannelType @default(text)
+  createdByUserId String
+  createdAt       DateTime    @default(now())
+  course          Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator         User        @relation("ChannelCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  messages        Message[]
+
+  @@index([courseId])
+}
+
+model Message {
+  id           String    @id @default(uuid())
+  channelId    String
+  authorUserId String
+  content      String
+  createdAt    DateTime  @default(now())
+  editedAt     DateTime?
+  deletedAt    DateTime?
+  channel      Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author       User      @relation("MessageAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([channelId, createdAt])
+}
+
+model VideoRoom {
+  id              String                 @id @default(uuid())
+  courseId        String                 @unique
+  title           String
+  maxParticipants Int                    @default(6)
+  createdAt       DateTime               @default(now())
+  course          Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  participants    VideoRoomParticipant[]
+}
+
+model VideoRoomParticipant {
+  id        String    @id @default(uuid())
+  roomId     String
+  userId     String
+  joinedAt   DateTime @default(now())
+  leftAt     DateTime?
+  peerId     String
+  room       VideoRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([userId])
+}
+
