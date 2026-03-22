@@ -6,11 +6,14 @@ export async function apiRequest<T>(
   token?: string | null,
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  if (!headers.has('Content-Type') && options.body) {
-    headers.set('Content-Type', 'application/json');
-  }
+
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (!isFormData && options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
@@ -24,6 +27,32 @@ export async function apiRequest<T>(
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as T;
+  }
+
+  return (await response.text()) as T;
 }
 
+export async function downloadFile(path: string, token: string, fileName: string) {
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Download failed: ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

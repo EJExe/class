@@ -1,17 +1,18 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { LoginPage } from '../pages/LoginPage';
-import { CoursesPage } from '../pages/CoursesPage';
-import { CoursePage } from '../pages/CoursePage';
-import { MembersPage } from '../pages/MembersPage';
-import { VideoRoomPage } from '../pages/VideoRoomPage';
 import { useAuth } from '../hooks/useAuth';
+import { AssignmentPage } from '../pages/AssignmentPage';
+import { AuditLogsPage } from '../pages/AuditLogsPage';
+import { CoursePage } from '../pages/CoursePage';
+import { CoursesPage } from '../pages/CoursesPage';
+import { GroupsPage } from '../pages/GroupsPage';
+import { LoginPage } from '../pages/LoginPage';
+import { MembersPage } from '../pages/MembersPage';
+import { NotificationsPage } from '../pages/NotificationsPage';
+import { VideoRoomPage } from '../pages/VideoRoomPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { token } = useAuth();
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 export function App() {
@@ -43,6 +44,38 @@ export function App() {
         }
       />
       <Route
+        path="/courses/:courseId/groups"
+        element={
+          <Protected>
+            <GroupsPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/courses/:courseId/assignments/:assignmentId"
+        element={
+          <Protected>
+            <AssignmentPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <Protected>
+            <NotificationsPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/audit"
+        element={
+          <Protected>
+            <AuditLogsPage />
+          </Protected>
+        }
+      />
+      <Route
         path="/courses/:courseId/video"
         element={
           <Protected>
@@ -54,4 +87,3 @@ export function App() {
     </Routes>
   );
 }
-

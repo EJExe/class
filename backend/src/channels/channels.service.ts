@@ -1,35 +1,165 @@
-import { Injectable } from '@nestjs/common';
-import { ChannelType } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { AssignmentStatus, ChannelType } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../common/access.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateChannelDto } from './dto/create-channel.dto';
+import { UpdateChannelDto } from './dto/update-channel.dto';
 
 @Injectable()
 export class ChannelsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
+    private readonly audit: AuditService,
   ) {}
 
-  async createChannel(userId: string, courseId: string, name: string) {
-    await this.access.assertCourseOwner(courseId, userId);
+  async createChannel(userId: string, courseId: string, dto: CreateChannelDto) {
+    await this.access.assertCourseManager(courseId, userId);
 
-    return this.prisma.channel.create({
+    const channel = await this.prisma.channel.create({
       data: {
         courseId,
-        name,
-        type: ChannelType.text,
+        name: dto.name,
+        description: dto.description,
+        type: dto.type,
         createdByUserId: userId,
+        groupAccess: dto.groupIds?.length
+          ? {
+              create: dto.groupIds.map((groupId) => ({ groupId })),
+            }
+          : undefined,
+        assignment:
+          dto.type === ChannelType.assignment
+            ? {
+                create: {
+                  title: dto.assignmentTitle ?? dto.name,
+                  description: dto.assignmentDescription,
+                  status: AssignmentStatus.draft,
+                  deadlineAt: dto.assignmentDeadlineAt ? new Date(dto.assignmentDeadlineAt) : null,
+                  createdByUserId: userId,
+                },
+              }
+            : undefined,
+      },
+      include: {
+        groupAccess: true,
+        assignment: true,
+      },
+    });
+
+    await this.audit.log({
+      actorUserId: userId,
+      actionType: 'channel.created',
+      entityType: 'channel',
+      entityId: channel.id,
+      metadata: { type: channel.type, groupIds: dto.groupIds ?? [] },
+    });
+
+    if (channel.assignment) {
+      await this.audit.log({
+        actorUserId: userId,
+        actionType: 'assignment.created',
+        entityType: 'assignment',
+        entityId: channel.assignment.id,
+        metadata: { channelId: channel.id },
+      });
+    }
+
+    return channel;
+  }
+
+  async listChannels(userId: string, courseId: string) {
+    const membership = await this.access.assertCourseMember(courseId, userId);
+
+    const groupIds = (
+      await this.prisma.courseGroupMember.findMany({
+        where: {
+          userId,
+          group: {
+            courseId,
+          },
+        },
+        select: { groupId: true },
+      })
+    ).map((entry) => entry.groupId);
+
+    const isPrivileged = ['admin', 'teacher', 'assistant'].includes(membership.role);
+
+    return this.prisma.channel.findMany({
+      where: {
+        courseId,
+        ...(isPrivileged
+          ? {}
+          : {
+              OR: [
+                { groupAccess: { none: {} } },
+                { groupAccess: { some: { groupId: { in: groupIds } } } },
+              ],
+            }),
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        groupAccess: true,
+        assignment: true,
       },
     });
   }
 
-  async listChannels(userId: string, courseId: string) {
-    await this.access.assertCourseMember(courseId, userId);
+  async getChannel(userId: string, channelId: string) {
+    await this.access.assertChannelAccess(channelId, userId);
 
-    return this.prisma.channel.findMany({
-      where: { courseId },
-      orderBy: { createdAt: 'asc' },
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: channelId },
+      include: {
+        groupAccess: true,
+        assignment: true,
+      },
     });
+
+    if (!channel) {
+      throw new NotFoundException('Channel not found');
+    }
+
+    return channel;
+  }
+
+  async updateChannel(userId: string, channelId: string, dto: UpdateChannelDto) {
+    const existing = await this.prisma.channel.findUnique({ where: { id: channelId } });
+    if (!existing) {
+      throw new NotFoundException('Channel not found');
+    }
+
+    await this.access.assertCourseManager(existing.courseId, userId);
+
+    const channel = await this.prisma.channel.update({
+      where: { id: channelId },
+      data: {
+        ...(dto.name ? { name: dto.name } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        ...(dto.groupIds
+          ? {
+              groupAccess: {
+                deleteMany: {},
+                create: dto.groupIds.map((groupId) => ({ groupId })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        groupAccess: true,
+        assignment: true,
+      },
+    });
+
+    await this.audit.log({
+      actorUserId: userId,
+      actionType: 'channel.updated',
+      entityType: 'channel',
+      entityId: channelId,
+      metadata: { ...dto },
+    });
+
+    return channel;
   }
 }
-

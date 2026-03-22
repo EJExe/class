@@ -1,109 +1,90 @@
-# DIPLOM MVP
+# DIPLOM LMS
 
-MVP платформа курсов с каналами, real-time чатом и видеокомнатой.
+Local LMS platform built on `NestJS + Prisma + PostgreSQL + React`.
 
-## Структура
+## Implemented LMS scope
 
-- `backend/` — NestJS + Prisma + PostgreSQL + WebSocket (`/ws`)
-- `frontend/` — React + React Router + socket.io-client + WebRTC
+- courses with roles `admin / teacher / assistant / student`
+- student groups inside courses
+- group-based channel visibility
+- text channels with chat history, delete and realtime socket flow
+- assignment channels
+- assignments with description, status and deadline
+- local file storage for assignment materials and student submissions
+- draft upload + final submit
+- late submission marking
+- grading and teacher comments
+- private assignment chat
+- notifications
+- audit log
+- submission activity log
+- video room module preserved from MVP
 
-## Быстрый старт
+## Main routes
 
-### Вариант 1: запуск в один клик (Windows)
+- `POST /api/session`
+- `GET /api/courses`
+- `PATCH /api/courses/:id`
+- `PATCH /api/courses/:id/members/:userId/role`
+- `POST /api/courses/:id/groups`
+- `POST /api/courses/:id/channels`
+- `POST /api/channels/:id/assignments`
+- `GET /api/assignments/:id`
+- `POST /api/assignments/:id/files`
+- `POST /api/assignments/:id/submissions/upload`
+- `POST /api/assignments/:id/submissions/submit`
+- `PATCH /api/submissions/:id/grade`
+- `GET /api/assignments/:id/private-chat`
+- `GET /api/notifications`
+- `GET /api/audit-logs`
 
-Из корня проекта:
+## Run
+
+1. Start PostgreSQL:
 
 ```bat
-run.bat
-```
-
-Остановка:
-
-```bat
-stop.bat
-```
-
-### Вариант 2: ручной запуск
-
-1. Поднять PostgreSQL:
-
-```bash
 docker compose up -d
 ```
 
 2. Backend:
 
-```bash
+```bat
 cd backend
 copy .env.example .env
 npm install
 npx prisma generate
-npx prisma migrate dev --name init
 npm run start:dev
 ```
 
 3. Frontend:
 
-```bash
+```bat
 cd frontend
 copy .env.example .env
 npm install
 npm run dev
 ```
 
-## Реализовано в MVP
+4. Open `http://localhost:5173`
 
-- Вход по nickname (пароль опционален), выдача session token
-- Курсы: создание, список, join по invite-коду
-- Роли: `owner` / `member`, проверка прав на сервере
-- Каналы: создание (owner), список
-- Чат: REST history + pagination, WebSocket real-time, soft delete
-- Видеокомната: join/leave, participants presence, WebRTC mesh сигналинг по WS
+## Database note
 
-## Основные endpoint-ы API
+The codebase is already updated to the LMS schema, but migration from the old MVP database was not completed automatically in this session.
 
-- `POST /api/session`
-- `DELETE /api/session`
-- `GET /api/me`
-- `POST /api/courses`
-- `GET /api/courses`
-- `GET /api/courses/:id`
-- `POST /api/courses/join`
-- `GET /api/courses/:id/members`
-- `POST /api/courses/:id/channels`
-- `GET /api/courses/:id/channels`
-- `GET /api/channels/:id/messages`
-- `POST /api/channels/:id/messages`
-- `DELETE /api/messages/:id`
-- `GET /api/courses/:id/video-room`
-- `GET /api/video-rooms/:id/participants`
+If your local database still contains the old MVP schema, use one of these approaches:
 
-## WebSocket события (namespace `/ws`)
-
-- `chat:join`
-- `chat:leave`
-- `chat:message`
-- `chat:message:new`
-- `room:join`
-- `room:leave`
-- `room:participants`
-- `webrtc:offer`
-- `webrtc:answer`
-- `webrtc:ice`
-- `room:error`
-
-## Ограничения текущего MVP
-
-- Без заданий, оценок, уведомлений
-- Без refresh-токенов и сложной auth-модели
-- Видеосвязь на mesh-топологии (рекомендуется до 6 участников)
-
-## Кодировка
-
-Все исходники сохранены в UTF-8. Если в терминале русские символы отображаются некорректно, используйте:
+1. Safe local reset for development:
 
 ```bat
-chcp 65001
+cd backend
+npx prisma migrate reset
 ```
 
+2. Or recreate the local database and run:
 
+```bat
+cd backend
+npx prisma migrate dev --name lms_upgrade
+```
+
+Use reset only if you are fine with wiping old local MVP data.

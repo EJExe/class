@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { SessionAuthGuard } from '../common/session-auth.guard';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/current-user.decorator';
+import { SessionAuthGuard } from '../common/session-auth.guard';
+import { CreateGroupDto } from '../groups/dto/create-group.dto';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { JoinCourseDto } from './dto/join-course.dto';
+import { UpdateCourseDto } from './dto/update-course.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { CoursesService } from './courses.service';
 
 @Controller('courses')
@@ -25,6 +28,15 @@ export class CoursesController {
     return this.coursesService.getCourseById(user.id, id);
   }
 
+  @Patch(':id')
+  updateCourse(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateCourseDto,
+  ) {
+    return this.coursesService.updateCourse(user.id, id, dto);
+  }
+
   @Post('join')
   joinCourse(@CurrentUser() user: { id: string }, @Body() dto: JoinCourseDto) {
     return this.coursesService.joinByInviteCode(user.id, dto.inviteCode);
@@ -34,5 +46,34 @@ export class CoursesController {
   getMembers(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.coursesService.getMembers(user.id, id);
   }
-}
 
+  @Patch(':id/members/:userId/role')
+  updateRole(
+    @CurrentUser() user: { id: string },
+    @Param('id') courseId: string,
+    @Param('userId') targetUserId: string,
+    @Body() dto: UpdateMemberRoleDto,
+  ) {
+    return this.coursesService.updateMemberRole(user.id, courseId, targetUserId, dto.role);
+  }
+
+  @Get(':id/roles')
+  getRoles() {
+    return this.coursesService.getRoles();
+  }
+
+  @Post(':id/groups')
+  createGroup(
+    @CurrentUser() user: { id: string },
+    @Param('id') courseId: string,
+    @Body() dto: CreateGroupDto,
+  ) {
+    return this.coursesService.createGroup(user.id, courseId, dto);
+  }
+
+  @Get(':id/groups')
+  listGroups(@CurrentUser() user: { id: string }, @Param('id') courseId: string) {
+    return this.coursesService.listGroups(user.id, courseId);
+  }
+
+}

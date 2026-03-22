@@ -68,10 +68,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() payload: { channelId: string },
   ) {
-    const userId = await this.ensureSocketUser(client);
-    const channel = await this.access.getChannelWithCourse(payload.channelId);
-    await this.access.assertCourseMember(channel.courseId, userId);
-
+    await this.ensureSocketUser(client);
+    await this.access.assertChannelAccess(payload.channelId, client.data.userId as string);
     await client.join(`chat:${payload.channelId}`);
     client.emit('chat:join', { channelId: payload.channelId, ok: true });
   }

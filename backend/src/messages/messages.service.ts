@@ -10,8 +10,7 @@ export class MessagesService {
   ) {}
 
   async getChannelMessages(userId: string, channelId: string, cursor?: string, limit = 30) {
-    const channel = await this.access.getChannelWithCourse(channelId);
-    await this.access.assertCourseMember(channel.courseId, userId);
+    await this.access.assertChannelAccess(channelId, userId);
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
 
@@ -36,8 +35,7 @@ export class MessagesService {
   }
 
   async createMessage(userId: string, channelId: string, content: string) {
-    const channel = await this.access.getChannelWithCourse(channelId);
-    await this.access.assertCourseMember(channel.courseId, userId);
+    await this.access.assertChannelAccess(channelId, userId);
 
     return this.prisma.message.create({
       data: {

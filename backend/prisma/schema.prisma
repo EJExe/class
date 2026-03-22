@@ -8,26 +8,62 @@ datasource db {
 }
 
 enum CourseRole {
-  owner
-  member
+  admin
+  teacher
+  assistant
+  student
 }
 
 enum ChannelType {
   text
+  assignment
+}
+
+enum AssignmentStatus {
+  draft
+  active
+  closed
+  archived
+}
+
+enum SubmissionStatus {
+  not_submitted
+  draft
+  submitted
+  submitted_late
+  under_review
+  reviewed
+  returned_for_revision
+}
+
+enum NotificationType {
+  assignment_created
+  submission_uploaded
+  submission_submitted
+  submission_graded
+  assignment_message
 }
 
 model User {
-  id           String         @id @default(uuid())
-  nickname     String         @unique
-  passwordHash String?
-  createdAt    DateTime       @default(now())
-  lastSeenAt   DateTime       @default(now())
-  sessions     Session[]
-  memberships  CourseMember[]
-  coursesOwned Course[]       @relation("CourseOwner")
-  channels     Channel[]      @relation("ChannelCreator")
-  messages     Message[]      @relation("MessageAuthor")
-  videoLinks   VideoRoomParticipant[]
+  id                              String                         @id @default(uuid())
+  nickname                        String                         @unique
+  passwordHash                    String?
+  createdAt                       DateTime                       @default(now())
+  lastSeenAt                      DateTime                       @default(now())
+  sessions                        Session[]
+  memberships                     CourseMember[]
+  courseGroupMemberships          CourseGroupMember[]
+  coursesCreated                  Course[]                       @relation("CourseCreator")
+  channelsCreated                 Channel[]                      @relation("ChannelCreator")
+  assignmentsCreated              Assignment[]                   @relation("AssignmentCreator")
+  messages                        Message[]                      @relation("MessageAuthor")
+  privateAssignmentMessages       PrivateAssignmentMessage[]     @relation("PrivateAssignmentMessageAuthor")
+  privateAssignmentChats          PrivateAssignmentChat[]
+  submissions                     Submission[]                   @relation("StudentSubmissions")
+  submissionActivity              SubmissionActivityLog[]
+  notifications                   Notification[]
+  auditLogs                       AuditLog[]
+  videoLinks                      VideoRoomParticipant[]
 }
 
 model Session {
@@ -45,11 +81,13 @@ model Course {
   id           String         @id @default(uuid())
   title        String
   description  String?
-  ownerUserId  String
+  createdById  String
   inviteCode   String         @unique
   createdAt    DateTime       @default(now())
-  owner        User           @relation("CourseOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  updatedAt    DateTime       @updatedAt
+  createdBy    User           @relation("CourseCreator", fields: [createdById], references: [id], onDelete: Cascade)
   members      CourseMember[]
+  groups       CourseGroup[]
   channels     Channel[]
   videoRoom    VideoRoom?
 }
@@ -58,7 +96,7 @@ model CourseMember {
   id       String     @id @default(uuid())
   courseId String
   userId   String
-  role     CourseRole @default(member)
+  role     CourseRole @default(student)
   joinedAt DateTime   @default(now())
   course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -67,18 +105,194 @@ model CourseMember {
   @@index([userId])
 }
 
+model CourseGroup {
+  id        String              @id @default(uuid())
+  courseId  String
+  name      String
+  createdAt DateTime            @default(now())
+  course    Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  members   CourseGroupMember[]
+  channels  ChannelGroupAccess[]
+
+  @@unique([courseId, name])
+}
+
+model CourseGroupMember {
+  id        String      @id @default(uuid())
+  groupId    String
+  userId     String
+  addedAt    DateTime   @default(now())
+  group      CourseGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
 model Channel {
-  id              String      @id @default(uuid())
+  id              String               @id @default(uuid())
   courseId        String
   name            String
-  type            ChannelType @default(text)
+  description     String?
+  type            ChannelType          @default(text)
   createdByUserId String
-  createdAt       DateTime    @default(now())
-  course          Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  creator         User        @relation("ChannelCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  course          Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator         User                 @relation("ChannelCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  groupAccess     ChannelGroupAccess[]
   messages        Message[]
+  assignment      Assignment?
 
   @@index([courseId])
+}
+
+model ChannelGroupAccess {
+  id        String      @id @default(uuid())
+  channelId String
+  groupId   String
+  channel   Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  group     CourseGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, groupId])
+}
+
+model Assignment {
+  id              String                   @id @default(uuid())
+  channelId       String                   @unique
+  title           String
+  description     String?
+  status          AssignmentStatus         @default(draft)
+  deadlineAt      DateTime?
+  createdByUserId String
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  channel         Channel                  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  creator         User                     @relation("AssignmentCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  files           AssignmentFile[]
+  submissions     Submission[]
+  privateChats    PrivateAssignmentChat[]
+
+  @@index([createdByUserId])
+}
+
+model AssignmentFile {
+  id           String     @id @default(uuid())
+  assignmentId String
+  originalName String
+  storedName   String
+  mimeType     String
+  sizeBytes    Int
+  path         String
+  createdAt    DateTime   @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+}
+
+model Submission {
+  id              String             @id @default(uuid())
+  assignmentId    String
+  studentUserId   String
+  currentFileId   String?
+  status          SubmissionStatus   @default(not_submitted)
+  isLate          Boolean            @default(false)
+  submittedAt     DateTime?
+  lastUploadedAt  DateTime?
+  grade           String?
+  teacherComment  String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  assignment      Assignment         @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student         User               @relation("StudentSubmissions", fields: [studentUserId], references: [id], onDelete: Cascade)
+  currentFile     SubmissionFile?    @relation("CurrentSubmissionFile", fields: [currentFileId], references: [id], onDelete: SetNull)
+  files           SubmissionFile[]   @relation("SubmissionFiles")
+  activity        SubmissionActivityLog[]
+
+  @@unique([assignmentId, studentUserId])
+  @@index([studentUserId])
+}
+
+model SubmissionFile {
+  id           String       @id @default(uuid())
+  submissionId String
+  originalName String
+  storedName   String
+  mimeType     String
+  sizeBytes    Int
+  path         String
+  uploadedAt   DateTime     @default(now())
+  submission   Submission   @relation("SubmissionFiles", fields: [submissionId], references: [id], onDelete: Cascade)
+  currentFor   Submission[] @relation("CurrentSubmissionFile")
+
+  @@index([submissionId])
+}
+
+model SubmissionActivityLog {
+  id          String     @id @default(uuid())
+  submissionId String
+  actorUserId  String
+  actionType   String
+  occurredAt   DateTime  @default(now())
+  metadataJson Json?
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  actor        User       @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, occurredAt])
+}
+
+model PrivateAssignmentChat {
+  id            String                     @id @default(uuid())
+  assignmentId  String
+  studentUserId String
+  createdAt     DateTime                   @default(now())
+  assignment    Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student       User                       @relation(fields: [studentUserId], references: [id], onDelete: Cascade)
+  messages      PrivateAssignmentMessage[]
+
+  @@unique([assignmentId, studentUserId])
+}
+
+model PrivateAssignmentMessage {
+  id           String                 @id @default(uuid())
+  chatId        String
+  authorUserId  String
+  content       String
+  createdAt     DateTime              @default(now())
+  editedAt      DateTime?
+  deletedAt     DateTime?
+  chat          PrivateAssignmentChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  author        User                  @relation("PrivateAssignmentMessageAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([chatId, createdAt])
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  userId      String
+  type        NotificationType
+  title       String
+  body        String
+  entityType  String?
+  entityId    String?
+  isRead      Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  actorUserId String?
+  actionType  String
+  entityType  String
+  entityId    String
+  metadataJson Json?
+  createdAt   DateTime  @default(now())
+  actor       User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
 
 model Message {
@@ -118,4 +332,3 @@ model VideoRoomParticipant {
   @@index([roomId])
   @@index([userId])
 }
-
