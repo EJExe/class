@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getCourse, getCourseMembers, getRoles, updateMemberRole } from '../services/courses.api';
 import { useAuth } from '../hooks/useAuth';
@@ -20,7 +20,7 @@ export function MembersPage() {
     ]);
     setMembers(membersData);
     setRoles(rolesData);
-    const myRole = course.members.find((member: any) => member.user.id === user?.id)?.role;
+    const myRole = course.currentUserRole ?? course.members.find((member: any) => member.user.id === user?.id)?.role;
     setCanManage(myRole === 'admin' || myRole === 'teacher');
   };
 
@@ -37,8 +37,8 @@ export function MembersPage() {
   return (
     <div className="page col">
       <div className="toolbar">
-        <h1>Members</h1>
-        <Link to={`/courses/${courseId}`}>Back to course</Link>
+        <h1>Участники</h1>
+        <Link to={`/courses/${courseId}`}>Назад к курсу</Link>
       </div>
 
       <div className="panel col">
@@ -52,7 +52,7 @@ export function MembersPage() {
               <select value={member.role} onChange={(e) => void onRoleChange(member.user.id, e.target.value)}>
                 {roles.map((role) => (
                   <option key={role.value} value={role.value}>
-                    {role.label}
+                    {roleLabels[role.value] ?? role.label ?? role.value}
                   </option>
                 ))}
               </select>
@@ -65,3 +65,4 @@ export function MembersPage() {
     </div>
   );
 }
+

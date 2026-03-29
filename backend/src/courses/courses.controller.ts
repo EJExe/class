@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { CreateGroupDto } from '../groups/dto/create-group.dto';
@@ -19,13 +19,25 @@ export class CoursesController {
   }
 
   @Get()
-  getCourses(@CurrentUser() user: { id: string }) {
-    return this.coursesService.getUserCourses(user.id);
+  getCourses(@CurrentUser() user: { id: string }, @Query('q') q?: string) {
+    return this.coursesService.getUserCourses(user.id, q?.trim() || undefined);
   }
 
   @Get(':id')
   getCourse(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.coursesService.getCourseById(user.id, id);
+  }
+
+  @Get(':id/export')
+  async exportCourse(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Res() res: any,
+  ) {
+    const csv = await this.coursesService.exportCourseCsv(user.id, id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="course-${id}.csv"`);
+    return res.send('\uFEFF' + csv);
   }
 
   @Patch(':id')
@@ -58,8 +70,8 @@ export class CoursesController {
   }
 
   @Get(':id/roles')
-  getRoles() {
-    return this.coursesService.getRoles();
+  getRoles(@CurrentUser() user: { id: string }, @Param('id') courseId: string) {
+    return this.coursesService.getRoles(user.id, courseId);
   }
 
   @Post(':id/groups')

@@ -1,11 +1,11 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { getMe } from '../services/auth.api';
+import { getMe, type AuthUser } from '../services/auth.api';
 
 const TOKEN_KEY = 'diplom_token';
 
 export type AuthState = {
   token: string | null;
-  user: { id: string; nickname: string } | null;
+  user: AuthUser | null;
   setToken: (token: string | null) => void;
   reloadMe: () => Promise<void>;
 };
@@ -19,7 +19,7 @@ export const AuthContext = createContext<AuthState>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
-  const [user, setUser] = useState<{ id: string; nickname: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   const setToken = (value: string | null) => {
     setTokenState(value);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const me = await getMe(token);
-      setUser({ id: me.id, nickname: me.nickname });
+      setUser(me);
     } catch {
       setToken(null);
     }

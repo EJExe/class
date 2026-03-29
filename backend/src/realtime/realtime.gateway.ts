@@ -9,15 +9,19 @@ import {
 } from '@nestjs/websockets';
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { AssignmentsService } from '../assignments/assignments.service';
+import { verifyAuthToken } from '../auth/token.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../common/access.service';
 import { MessagesService } from '../messages/messages.service';
+import { NotificationHubService } from '../notifications/notification-hub.service';
 
 type AuthedSocket = Socket & {
   data: {
     userId?: string;
     nickname?: string;
     joinedRoomIds?: Set<string>;
+    joinedPrivateChatIds?: Set<string>;
   };
 };
 
@@ -39,6 +43,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
     private readonly messagesService: MessagesService,
+    private readonly assignmentsService: AssignmentsService,
+    private readonly notificationHub: NotificationHubService,
   ) {}
 
   async handleConnection(client: AuthedSocket) {
@@ -48,6 +54,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       client.disconnect(true);
       return;
     }
+    await client.join(`user:${client.data.userId}`);
+    this.notificationHub.attach(this.server);
   }
 
   async handleDisconnect(client: AuthedSocket) {
@@ -61,6 +69,66 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     for (const roomId of roomIds) {
       await this.leaveVideoRoom(client, roomId);
     }
+  }
+
+  @SubscribeMessage('private-chat:join')
+  async onPrivateChatJoin(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { chatId: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    await this.access.assertPrivateChatAccess(payload.chatId, userId);
+    client.data.joinedPrivateChatIds?.add(payload.chatId);
+    await client.join(`private-chat:${payload.chatId}`);
+    client.emit('private-chat:join', { chatId: payload.chatId, ok: true });
+  }
+
+  @SubscribeMessage('private-chat:leave')
+  async onPrivateChatLeave(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { chatId: string },
+  ) {
+    client.data.joinedPrivateChatIds?.delete(payload.chatId);
+    await client.leave(`private-chat:${payload.chatId}`);
+    client.emit('private-chat:leave', { chatId: payload.chatId, ok: true });
+  }
+
+  @SubscribeMessage('private-chat:message')
+  async onPrivateChatMessage(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { chatId: string; content: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    const normalizedContent = payload.content?.trim();
+    if (!normalizedContent) {
+      return;
+    }
+    const normalized = await this.assignmentsService.createPrivateChatMessage(userId, payload.chatId, {
+      content: normalizedContent,
+    });
+    this.server.to(`private-chat:${payload.chatId}`).emit('private-chat:message:new', {
+      chatId: payload.chatId,
+      message: normalized,
+    });
+    client.emit('private-chat:message:new', {
+      chatId: payload.chatId,
+      message: normalized,
+    });
+  }
+
+  @SubscribeMessage('private-chat:message:update')
+  async onPrivateChatMessageUpdate(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { chatId: string; messageId: string; content: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    const message = await this.assignmentsService.updatePrivateChatMessage(userId, payload.messageId, {
+      content: payload.content,
+    });
+    this.server.to(`private-chat:${payload.chatId}`).emit('private-chat:message:updated', {
+      chatId: payload.chatId,
+      message,
+    });
   }
 
   @SubscribeMessage('chat:join')
@@ -97,6 +165,19 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       message,
     });
     client.emit('chat:message:new', {
+      channelId: payload.channelId,
+      message,
+    });
+  }
+
+  @SubscribeMessage('chat:message:update')
+  async onChatMessageUpdate(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { channelId: string; messageId: string; content: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    const message = await this.messagesService.updateMessage(userId, payload.messageId, payload.content);
+    this.server.to(`chat:${payload.channelId}`).emit('chat:message:updated', {
       channelId: payload.channelId,
       message,
     });
@@ -182,17 +263,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       },
     });
 
+    client.emit('room:joined', {
+      roomId: payload.roomId,
+      peerId,
+      participants,
+    });
     this.server.to(`room:${payload.roomId}`).emit('room:participants', {
       roomId: payload.roomId,
       participants,
     });
     client.emit('room:participants', {
       roomId: payload.roomId,
-      participants,
-    });
-    client.emit('room:joined', {
-      roomId: payload.roomId,
-      peerId,
       participants,
     });
   }
@@ -272,18 +353,26 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       return false;
     }
 
+    let payload;
+    try {
+      payload = verifyAuthToken(token);
+    } catch {
+      return false;
+    }
+
     const session = await this.prisma.session.findUnique({
-      where: { token },
+      where: { token: payload.sid },
       include: { user: true },
     });
 
-    if (!session || (session.expiresAt && session.expiresAt < new Date())) {
+    if (!session || session.userId !== payload.sub || (session.expiresAt && session.expiresAt < new Date())) {
       return false;
     }
 
     client.data.userId = session.user.id;
     client.data.nickname = session.user.nickname;
     client.data.joinedRoomIds = client.data.joinedRoomIds ?? new Set<string>();
+    client.data.joinedPrivateChatIds = client.data.joinedPrivateChatIds ?? new Set<string>();
     return true;
   }
 

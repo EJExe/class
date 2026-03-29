@@ -23,6 +23,20 @@ export class StorageService {
     '.jpg',
     '.jpeg',
     '.gif',
+    '.webp',
+    '.bmp',
+    '.svg',
+    '.mp3',
+    '.wav',
+    '.ogg',
+    '.m4a',
+    '.aac',
+    '.flac',
+    '.mp4',
+    '.mov',
+    '.avi',
+    '.mkv',
+    '.webm',
   ]);
   private readonly allowedMimePrefixes = [
     'application/pdf',
@@ -34,6 +48,8 @@ export class StorageService {
     'application/x-7z-compressed',
     'text/plain',
     'image/',
+    'audio/',
+    'video/',
   ];
 
   constructor() {
@@ -42,7 +58,23 @@ export class StorageService {
     }
   }
 
-  async saveFile(scope: 'assignment-files' | 'submission-files', file: any) {
+  private normalizeOriginalName(originalName: string) {
+    if (!originalName) {
+      return originalName;
+    }
+
+    try {
+      const decoded = Buffer.from(originalName, 'latin1').toString('utf8');
+      return /[А-Яа-яЁё]/.test(decoded) ? decoded : originalName;
+    } catch {
+      return originalName;
+    }
+  }
+
+  async saveFile(
+    scope: 'assignment-files' | 'submission-files' | 'message-files' | 'avatar-files',
+    file: any,
+  ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -50,7 +82,8 @@ export class StorageService {
       throw new BadRequestException('File is too large');
     }
 
-    const extension = extname(file.originalname || '').toLowerCase();
+    const originalName = this.normalizeOriginalName(file.originalname || '');
+    const extension = extname(originalName).toLowerCase();
     const mimeType = file.mimetype || 'application/octet-stream';
     const allowedByExtension = this.allowedExtensions.has(extension);
     const allowedByMime = this.allowedMimePrefixes.some((prefix) => mimeType.startsWith(prefix));
@@ -70,7 +103,7 @@ export class StorageService {
     await fs.writeFile(filePath, file.buffer);
 
     return {
-      originalName: file.originalname,
+      originalName,
       storedName,
       mimeType,
       sizeBytes: file.size,

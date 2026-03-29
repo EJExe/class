@@ -1,5 +1,19 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
+function normalizePossibleMojibake(value: string) {
+  if (!value || !/[ÐÑРС]/.test(value)) {
+    return value;
+  }
+
+  try {
+    const bytes = Uint8Array.from(Array.from(value, (char) => char.charCodeAt(0) & 0xff));
+    const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    return /[А-Яа-яЁё]/.test(decoded) ? decoded : value;
+  } catch {
+    return value;
+  }
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -46,11 +60,22 @@ export async function downloadFile(path: string, token: string, fileName: string
     throw new Error(`Download failed: ${response.status}`);
   }
 
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  const asciiMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+  const resolvedFileName = normalizePossibleMojibake(
+    utf8Match
+      ? decodeURIComponent(utf8Match[1])
+      : asciiMatch
+        ? asciiMatch[1]
+        : fileName,
+  );
+
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = fileName;
+  link.download = resolvedFileName;
   document.body.appendChild(link);
   link.click();
   link.remove();

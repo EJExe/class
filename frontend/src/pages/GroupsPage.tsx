@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+﻿import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   addGroupMember,
@@ -55,13 +55,13 @@ export function GroupsPage() {
   return (
     <div className="page col">
       <div className="toolbar">
-        <h1>Groups</h1>
-        <Link to={`/courses/${courseId}`}>Back to course</Link>
+        <h1>Группы</h1>
+        <Link to={`/courses/${courseId}`}>Назад к курсу</Link>
       </div>
 
       <form className="panel row" onSubmit={onCreate}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New group name" required />
-        <button type="submit">Create group</button>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название новой группы" required />
+        <button type="submit">Создать группу</button>
       </form>
 
       <div className="grid-2">
@@ -73,14 +73,14 @@ export function GroupsPage() {
                 <div key={member.id} className="card-row">
                   <span>{member.user.nickname}</span>
                   <button className="danger" onClick={() => void onRemoveMember(group.id, member.user.id)}>
-                    Remove
+                    Удалить
                   </button>
                 </div>
               ))}
             </div>
             <select defaultValue="" onChange={(e) => e.target.value && void onAddMember(group.id, e.target.value)}>
               <option value="" disabled>
-                Add member
+                Добавить участника
               </option>
               {members
                 .filter((member) => !group.members.some((groupMember: any) => groupMember.user.id === member.user.id))
@@ -98,3 +98,4 @@ export function GroupsPage() {
     </div>
   );
 }
+

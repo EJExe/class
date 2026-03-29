@@ -38,18 +38,35 @@ export class AuditService {
     });
   }
 
-  listForEntity(entityType: string, entityId: string) {
-    return this.prisma.auditLog.findMany({
-      where: { entityType, entityId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        actor: {
-          select: {
-            id: true,
-            nickname: true,
+  async listForEntity(entityType: string, entityId: string, page = 1, limit = 20) {
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const skip = Math.max(page - 1, 0) * safeLimit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { entityType, entityId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+        include: {
+          actor: {
+            select: {
+              id: true,
+              nickname: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.auditLog.count({
+        where: { entityType, entityId },
+      }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      pageSize: safeLimit,
+    };
   }
 }

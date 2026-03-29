@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AssignmentStatus, ChannelType } from '@prisma/client';
+import { AssignmentStatus, ChannelType, CourseRole, SubmissionStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../common/access.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -86,23 +86,96 @@ export class ChannelsService {
 
     const isPrivileged = ['admin', 'teacher', 'assistant'].includes(membership.role);
 
-    return this.prisma.channel.findMany({
-      where: {
-        courseId,
-        ...(isPrivileged
-          ? {}
-          : {
+    const where = isPrivileged
+      ? {
+          courseId,
+          OR: [{ type: ChannelType.text }, { assignment: { is: { deletedAt: null } } }],
+        }
+      : {
+          courseId,
+          AND: [
+            {
               OR: [
                 { groupAccess: { none: {} } },
                 { groupAccess: { some: { groupId: { in: groupIds } } } },
               ],
-            }),
-      },
+            },
+            {
+              OR: [
+                { type: ChannelType.text },
+                { assignment: { is: { status: { not: AssignmentStatus.draft }, deletedAt: null } } },
+              ],
+            },
+          ],
+        };
+
+    const channels = await this.prisma.channel.findMany({
+      where,
       orderBy: { createdAt: 'asc' },
       include: {
         groupAccess: true,
-        assignment: true,
+        assignment: {
+          include: {
+            readStates: {
+              where: { userId },
+              take: 1,
+            },
+            submissions:
+              membership.role === CourseRole.student
+                ? {
+                    where: { studentUserId: userId },
+                    orderBy: { updatedAt: 'desc' },
+                    take: 1,
+                  }
+                : {
+                    where: {
+                      status: {
+                        in: [
+                          SubmissionStatus.submitted,
+                          SubmissionStatus.submitted_late,
+                          SubmissionStatus.under_review,
+                        ],
+                      },
+                    },
+                    orderBy: [{ submittedAt: 'desc' }, { updatedAt: 'desc' }],
+                    take: 1,
+                  },
+          },
+        },
+        readStates: {
+          where: { userId },
+          take: 1,
+        },
+        messages: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { createdAt: true },
+        },
       },
+    });
+
+    return channels.map((channel) => {
+      const channelReadAt = channel.readStates[0]?.lastReadAt?.getTime() ?? 0;
+      const latestMessageAt = channel.messages[0]?.createdAt?.getTime() ?? 0;
+
+      const assignmentReadAt = channel.assignment?.readStates?.[0]?.lastReadAt?.getTime() ?? 0;
+      const latestAssignmentAt = channel.assignment?.updatedAt?.getTime?.() ?? 0;
+      const latestSubmissionAt = channel.assignment?.submissions?.[0]
+        ? ((channel.assignment.submissions[0].submittedAt ?? channel.assignment.submissions[0].updatedAt)?.getTime?.() ??
+          0)
+        : 0;
+
+      return {
+        ...channel,
+        hasUnreadMessages: latestMessageAt > channelReadAt,
+        assignment: channel.assignment
+          ? {
+              ...channel.assignment,
+              hasUnread: Math.max(latestAssignmentAt, latestSubmissionAt) > assignmentReadAt,
+            }
+          : null,
+      };
     });
   }
 

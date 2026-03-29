@@ -15,17 +15,15 @@ export class AuditController {
 
   @Get()
   async list(@CurrentUser() user: { id: string }, @Query('limit') limit = '100') {
-    const reviewerMemberships = await this.prisma.courseMember.count({
+    const adminMemberships = await this.prisma.courseMember.count({
       where: {
         userId: user.id,
-        role: {
-          in: [CourseRole.admin, CourseRole.teacher, CourseRole.assistant],
-        },
+        role: CourseRole.admin,
       },
     });
 
-    if (reviewerMemberships === 0) {
-      throw new ForbiddenException('Audit logs are available only for teaching staff');
+    if (adminMemberships === 0) {
+      throw new ForbiddenException('Audit logs are available only for admins');
     }
 
     return this.auditService.listAll(Number(limit));

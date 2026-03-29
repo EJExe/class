@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { CourseRole } from '@prisma/client';
+import { AssignmentStatus, CourseRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const MANAGE_ROLES: CourseRole[] = [CourseRole.admin, CourseRole.teacher];
@@ -108,6 +108,13 @@ export class AccessService {
     }
 
     await this.assertChannelAccess(assignment.channelId, userId);
+    const membership = await this.getCourseMembership(assignment.channel.courseId, userId);
+    if (assignment.deletedAt && !REVIEW_ROLES.includes(membership.role)) {
+      throw new ForbiddenException('Assignment is in trash');
+    }
+    if (!REVIEW_ROLES.includes(membership.role) && assignment.status === AssignmentStatus.draft) {
+      throw new ForbiddenException('Assignment draft is not available for students');
+    }
     return assignment;
   }
 

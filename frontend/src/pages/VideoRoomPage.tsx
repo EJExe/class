@@ -29,6 +29,8 @@ export function VideoRoomPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const myPeerIdRef = useRef<string | null>(null);
+  const pendingOffersRef = useRef<Array<{ fromPeerId: string; sdp: RTCSessionDescriptionInit }>>([]);
+  const pendingIceRef = useRef<Array<{ fromPeerId: string; candidate: RTCIceCandidateInit }>>([]);
   const participantsPollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -46,6 +48,60 @@ export function VideoRoomPage() {
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  const syncPeers = async (roomId: string, nextParticipants: Array<Participant>) => {
+    const myPeerId = myPeerIdRef.current;
+    if (!myPeerId) return;
+
+    setParticipants(nextParticipants);
+
+    const activePeerIds = new Set(
+      nextParticipants.map((participant) => participant.peerId).filter((peerId) => peerId !== myPeerId),
+    );
+
+    for (const [peerId, pc] of peersRef.current.entries()) {
+      if (!activePeerIds.has(peerId)) {
+        pc.close();
+        peersRef.current.delete(peerId);
+        setRemoteStreams((prev) => {
+          const next = { ...prev };
+          delete next[peerId];
+          return next;
+        });
+      }
+    }
+
+    for (const participant of nextParticipants) {
+      if (participant.peerId === myPeerId) continue;
+      if (myPeerId < participant.peerId && !peersRef.current.has(participant.peerId)) {
+        const pc = getOrCreatePeer(participant.peerId, roomId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        wsService.getSocket().emit('webrtc:offer', {
+          roomId,
+          targetPeerId: participant.peerId,
+          sdp: offer,
+        });
+      }
+    }
+  };
+
+  const flushPendingSignals = async (roomId: string) => {
+    const offers = [...pendingOffersRef.current];
+    pendingOffersRef.current = [];
+    for (const offer of offers) {
+      await handleOffer(roomId, offer.fromPeerId, offer.sdp);
+    }
+
+    const iceCandidates = [...pendingIceRef.current];
+    pendingIceRef.current = [];
+    for (const item of iceCandidates) {
+      const pc = peersRef.current.get(item.fromPeerId);
+      if (pc) {
+        await pc.addIceCandidate(new RTCIceCandidate(item.candidate));
+      }
+    }
+  };
 
   const getOrCreatePeer = (targetPeerId: string, roomId: string) => {
     const existing = peersRef.current.get(targetPeerId);
@@ -77,6 +133,19 @@ export function VideoRoomPage() {
     return pc;
   };
 
+  const handleOffer = async (roomId: string, fromPeerId: string, sdp: RTCSessionDescriptionInit) => {
+    if (!myPeerIdRef.current) {
+      pendingOffersRef.current.push({ fromPeerId, sdp });
+      return;
+    }
+
+    const pc = getOrCreatePeer(fromPeerId, roomId);
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    wsService.getSocket().emit('webrtc:answer', { roomId, targetPeerId: fromPeerId, sdp: answer });
+  };
+
   const joinRoom = async () => {
     if (!token || !room || !user || joined) return;
     setError(null);
@@ -102,52 +171,27 @@ export function VideoRoomPage() {
       socket.on('connect', joinCurrentRoom);
       socket.on('room:error', (event: { message: string }) => setError(event.message));
 
-      socket.on('room:joined', (payload: { roomId: string; peerId: string; participants: Array<Participant> }) => {
+      socket.on('room:joined', async (payload: { roomId: string; peerId: string; participants: Array<Participant> }) => {
         if (payload.roomId !== room.id) return;
         myPeerIdRef.current = payload.peerId;
-        setParticipants(payload.participants);
+        await syncPeers(room.id, payload.participants);
+        await flushPendingSignals(room.id);
       });
 
       socket.on('room:participants', async (payload: { roomId: string; participants: Array<Participant> }) => {
         if (payload.roomId !== room.id) return;
-        setParticipants(payload.participants);
-
-        const activePeerIds = new Set(
-          payload.participants.map((p) => p.peerId).filter((peerId) => peerId !== myPeerIdRef.current),
-        );
-
-        for (const [peerId, pc] of peersRef.current.entries()) {
-          if (!activePeerIds.has(peerId)) {
-            pc.close();
-            peersRef.current.delete(peerId);
-            setRemoteStreams((prev) => {
-              const next = { ...prev };
-              delete next[peerId];
-              return next;
-            });
-          }
-        }
-
-        for (const peer of payload.participants) {
-          if (!myPeerIdRef.current || peer.peerId === myPeerIdRef.current) continue;
-          if (myPeerIdRef.current < peer.peerId && !peersRef.current.has(peer.peerId)) {
-            const pc = getOrCreatePeer(peer.peerId, room.id);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            socket.emit('webrtc:offer', { roomId: room.id, targetPeerId: peer.peerId, sdp: offer });
-          }
-        }
+        await syncPeers(room.id, payload.participants);
       });
 
       socket.on(
         'webrtc:offer',
         async (payload: { fromPeerId: string; targetPeerId: string; sdp: RTCSessionDescriptionInit }) => {
-          if (!myPeerIdRef.current || payload.targetPeerId !== myPeerIdRef.current) return;
-          const pc = getOrCreatePeer(payload.fromPeerId, room.id);
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit('webrtc:answer', { roomId: room.id, targetPeerId: payload.fromPeerId, sdp: answer });
+          if (!myPeerIdRef.current) {
+            pendingOffersRef.current.push({ fromPeerId: payload.fromPeerId, sdp: payload.sdp });
+            return;
+          }
+          if (payload.targetPeerId !== myPeerIdRef.current) return;
+          await handleOffer(room.id, payload.fromPeerId, payload.sdp);
         },
       );
 
@@ -164,9 +208,16 @@ export function VideoRoomPage() {
       socket.on(
         'webrtc:ice',
         async (payload: { fromPeerId: string; targetPeerId: string; candidate: RTCIceCandidateInit }) => {
-          if (!myPeerIdRef.current || payload.targetPeerId !== myPeerIdRef.current) return;
+          if (!myPeerIdRef.current) {
+            pendingIceRef.current.push({ fromPeerId: payload.fromPeerId, candidate: payload.candidate });
+            return;
+          }
+          if (payload.targetPeerId !== myPeerIdRef.current) return;
           const pc = peersRef.current.get(payload.fromPeerId);
-          if (!pc) return;
+          if (!pc) {
+            pendingIceRef.current.push({ fromPeerId: payload.fromPeerId, candidate: payload.candidate });
+            return;
+          }
           await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
         },
       );
@@ -207,6 +258,9 @@ export function VideoRoomPage() {
     setJoined(false);
     setParticipants([]);
     setRemoteStreams({});
+    myPeerIdRef.current = null;
+    pendingOffersRef.current = [];
+    pendingIceRef.current = [];
     peersRef.current.forEach((pc) => pc.close());
     peersRef.current.clear();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -229,22 +283,22 @@ export function VideoRoomPage() {
   return (
     <div className="page col">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Video Room</h2>
-        <Link to={`/courses/${courseId}`}>Back to course</Link>
+        <h2>Видеокомната</h2>
+        <Link to={`/courses/${courseId}`}>Назад к курсу</Link>
       </div>
 
       <div className="row">
-        <button onClick={() => void joinRoom()} disabled={!room || joined}>
-          Join
+        <button className={joined ? 'pressed' : ''} onClick={() => void joinRoom()} disabled={!room || joined}>
+          Присоединиться
         </button>
-        <button className="secondary" onClick={toggleMic} disabled={!joined}>
-          {micEnabled ? 'Mute mic' : 'Unmute mic'}
+        <button className={`secondary ${!micEnabled ? 'pressed' : ''}`} onClick={toggleMic} disabled={!joined}>
+          {micEnabled ? 'Выключить микрофон' : 'Включить микрофон'}
         </button>
-        <button className="secondary" onClick={toggleCam} disabled={!joined}>
-          {camEnabled ? 'Turn camera off' : 'Turn camera on'}
+        <button className={`secondary ${!camEnabled ? 'pressed' : ''}`} onClick={toggleCam} disabled={!joined}>
+          {camEnabled ? 'Выключить камеру' : 'Включить камеру'}
         </button>
         <button className="danger" onClick={leaveRoom} disabled={!joined}>
-          Leave
+          Выйти
         </button>
       </div>
 
@@ -252,10 +306,10 @@ export function VideoRoomPage() {
 
       <div className="video-room-layout">
         <div className="panel video-members">
-          <h3>Participants ({participants.length})</h3>
-          {participants.map((p) => (
-            <div key={p.peerId} className="row" style={{ justifyContent: 'space-between' }}>
-              <span>{p.user.nickname}</span>
+          <h3>Участники ({participants.length})</h3>
+          {participants.map((participant) => (
+            <div key={participant.peerId} className="row" style={{ justifyContent: 'space-between' }}>
+              <span>{participant.user.nickname}</span>
             </div>
           ))}
         </div>
@@ -263,15 +317,15 @@ export function VideoRoomPage() {
         <div className="panel video-stage">
           <div className="video-grid video-grid-large">
             <div>
-              <strong>You</strong>
+              <strong>Вы</strong>
               <video ref={localVideoRef} autoPlay playsInline muted />
             </div>
             {participants
-              .filter((p) => p.user.id !== user?.id)
-              .map((p) => (
-                <div key={p.peerId}>
-                  <strong>{p.user.nickname}</strong>
-                  <RemoteVideo stream={remoteStreams[p.peerId]} />
+              .filter((participant) => participant.peerId !== myPeerIdRef.current)
+              .map((participant) => (
+                <div key={participant.peerId}>
+                  <strong>{participant.user.nickname}</strong>
+                  <RemoteVideo stream={remoteStreams[participant.peerId]} />
                 </div>
               ))}
           </div>

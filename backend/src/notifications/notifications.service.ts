@@ -1,19 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationHubService } from './notification-hub.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly hub: NotificationHubService,
+  ) {}
 
-  create(userId: string, params: {
+  async create(userId: string, params: {
     type: NotificationType;
     title: string;
     body: string;
     entityType?: string;
     entityId?: string;
   }) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId,
         type: params.type,
@@ -23,6 +27,8 @@ export class NotificationsService {
         entityId: params.entityId,
       },
     });
+    this.hub.emitToUser(userId, 'notification:new', notification);
+    return notification;
   }
 
   list(userId: string, cursor?: string, limit = 30) {
@@ -36,17 +42,21 @@ export class NotificationsService {
     });
   }
 
-  markRead(userId: string, id: string) {
-    return this.prisma.notification.updateMany({
+  async markRead(userId: string, id: string) {
+    const result = await this.prisma.notification.updateMany({
       where: { id, userId },
       data: { isRead: true },
     });
+    this.hub.emitToUser(userId, 'notification:read', { id });
+    return result;
   }
 
-  markAllRead(userId: string) {
-    return this.prisma.notification.updateMany({
+  async markAllRead(userId: string) {
+    const result = await this.prisma.notification.updateMany({
       where: { userId, isRead: false },
       data: { isRead: true },
     });
+    this.hub.emitToUser(userId, 'notification:read-all', { ok: true });
+    return result;
   }
 }

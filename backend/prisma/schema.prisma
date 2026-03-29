@@ -46,9 +46,18 @@ enum NotificationType {
 
 model User {
   id                              String                         @id @default(uuid())
+  login                           String?                        @unique
+  email                           String?                        @unique
   nickname                        String                         @unique
+  fullName                        String?
+  birthDate                       DateTime?
+  avatarOriginalName              String?
+  avatarStoredName                String?
+  avatarMimeType                  String?
+  avatarPath                      String?
   passwordHash                    String?
   createdAt                       DateTime                       @default(now())
+  updatedAt                       DateTime                       @updatedAt
   lastSeenAt                      DateTime                       @default(now())
   sessions                        Session[]
   memberships                     CourseMember[]
@@ -57,9 +66,13 @@ model User {
   channelsCreated                 Channel[]                      @relation("ChannelCreator")
   assignmentsCreated              Assignment[]                   @relation("AssignmentCreator")
   messages                        Message[]                      @relation("MessageAuthor")
+  channelReadStates               ChannelReadState[]
+  assignmentReadStates            AssignmentReadState[]
+  messageReactions                MessageReaction[]
   privateAssignmentMessages       PrivateAssignmentMessage[]     @relation("PrivateAssignmentMessageAuthor")
   privateAssignmentChats          PrivateAssignmentChat[]
   submissions                     Submission[]                   @relation("StudentSubmissions")
+  submissionFileComments          SubmissionFileComment[]
   submissionActivity              SubmissionActivityLog[]
   notifications                   Notification[]
   auditLogs                       AuditLog[]
@@ -141,6 +154,7 @@ model Channel {
   creator         User                 @relation("ChannelCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   groupAccess     ChannelGroupAccess[]
   messages        Message[]
+  readStates      ChannelReadState[]
   assignment      Assignment?
 
   @@index([courseId])
@@ -163,12 +177,14 @@ model Assignment {
   description     String?
   status          AssignmentStatus         @default(draft)
   deadlineAt      DateTime?
+  deletedAt       DateTime?
   createdByUserId String
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
   channel         Channel                  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   creator         User                     @relation("AssignmentCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   files           AssignmentFile[]
+  readStates      AssignmentReadState[]
   submissions     Submission[]
   privateChats    PrivateAssignmentChat[]
 
@@ -222,9 +238,22 @@ model SubmissionFile {
   path         String
   uploadedAt   DateTime     @default(now())
   submission   Submission   @relation("SubmissionFiles", fields: [submissionId], references: [id], onDelete: Cascade)
+  comments     SubmissionFileComment[]
   currentFor   Submission[] @relation("CurrentSubmissionFile")
 
   @@index([submissionId])
+}
+
+model SubmissionFileComment {
+  id           String         @id @default(uuid())
+  fileId        String
+  authorUserId  String
+  content       String
+  createdAt     DateTime      @default(now())
+  file          SubmissionFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([fileId, createdAt])
 }
 
 model SubmissionActivityLog {
@@ -305,8 +334,62 @@ model Message {
   deletedAt    DateTime?
   channel      Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
   author       User      @relation("MessageAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  attachments  MessageAttachment[]
+  reactions    MessageReaction[]
 
   @@index([channelId, createdAt])
+}
+
+model MessageAttachment {
+  id           String   @id @default(uuid())
+  messageId    String
+  originalName String
+  storedName   String
+  mimeType     String
+  sizeBytes    Int
+  path         String
+  createdAt    DateTime @default(now())
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model ChannelReadState {
+  id         String   @id @default(uuid())
+  channelId   String
+  userId      String
+  lastReadAt  DateTime @default(now())
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId, lastReadAt])
+}
+
+model AssignmentReadState {
+  id           String     @id @default(uuid())
+  assignmentId String
+  userId       String
+  lastReadAt   DateTime   @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, userId])
+  @@index([userId, lastReadAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
 }
 
 model VideoRoom {

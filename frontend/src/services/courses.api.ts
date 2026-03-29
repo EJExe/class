@@ -1,7 +1,8 @@
 import { apiRequest } from './apiClient';
 
-export function listCourses(token: string) {
-  return apiRequest<Array<any>>('/courses', {}, token);
+export function listCourses(token: string, query?: string) {
+  const suffix = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+  return apiRequest<Array<any>>(`/courses${suffix}`, {}, token);
 }
 
 export function createCourse(token: string, payload: { title: string; description?: string }) {
