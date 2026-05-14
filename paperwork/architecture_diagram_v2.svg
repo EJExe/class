@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="360" viewBox="0 0 1400 360">
+  <defs>
+    <style>
+      .front { fill: #ffffff; stroke: #000000; stroke-width: 2; }
+      .top { fill: #f7f7f7; stroke: #000000; stroke-width: 2; }
+      .side { fill: #efefef; stroke: #000000; stroke-width: 2; }
+      .box { fill: #ffffff; stroke: #000000; stroke-width: 2; }
+      .title { font-family: Arial, sans-serif; font-size: 24px; font-weight: 700; }
+      .text { font-family: Arial, sans-serif; font-size: 18px; font-weight: 700; }
+      .label { font-family: Arial, sans-serif; font-size: 18px; }
+    </style>
+  </defs>
+
+  <!-- Left block -->
+  <polygon class="top" points="20,35 340,35 360,18 40,18"/>
+  <polygon class="side" points="340,35 340,295 360,278 360,18"/>
+  <rect class="front" x="20" y="35" width="320" height="260"/>
+  <text class="title" x="180" y="60" text-anchor="middle">Уровень данных</text>
+
+  <rect class="box" x="78" y="110" width="205" height="56"/>
+  <text class="text" x="180" y="132" text-anchor="middle">&lt;&lt;СУБД&gt;&gt;</text>
+  <text class="text" x="180" y="154" text-anchor="middle">PostgreSQL 16</text>
+
+  <rect class="box" x="78" y="200" width="205" height="56"/>
+  <text class="text" x="180" y="222" text-anchor="middle">&lt;&lt;БД&gt;&gt;</text>
+  <text class="text" x="180" y="244" text-anchor="middle">ClassRoom</text>
+
+  <!-- Middle block -->
+  <polygon class="top" points="500,35 840,35 860,18 520,18"/>
+  <polygon class="side" points="840,35 840,295 860,278 860,18"/>
+  <rect class="front" x="500" y="35" width="340" height="260"/>
+  <text class="title" x="670" y="60" text-anchor="middle">Прикладной уровень</text>
+
+  <rect class="box" x="570" y="95" width="200" height="56"/>
+  <text class="text" x="670" y="117" text-anchor="middle">&lt;&lt;Платформа&gt;&gt;</text>
+  <text class="text" x="670" y="139" text-anchor="middle">Node.js</text>
+
+  <rect class="box" x="570" y="170" width="200" height="56"/>
+  <text class="text" x="670" y="192" text-anchor="middle">&lt;&lt;Веб-сервер&gt;&gt;</text>
+  <text class="text" x="670" y="214" text-anchor="middle">NestJS 10</text>
+
+  <!-- Right block -->
+  <polygon class="top" points="1010,35 1330,35 1350,18 1030,18"/>
+  <polygon class="side" points="1330,35 1330,295 1350,278 1350,18"/>
+  <rect class="front" x="1010" y="35" width="320" height="260"/>
+  <text class="title" x="1170" y="60" text-anchor="middle">Уровень представления</text>
+
+  <rect class="box" x="1075" y="130" width="190" height="65"/>
+  <text class="text" x="1170" y="152" text-anchor="middle">&lt;&lt;Клиент&gt;&gt;</text>
+  <text class="text" x="1170" y="184" text-anchor="middle">Веб-браузер</text>
+
+  <!-- Links -->
+  <line x1="360" y1="172" x2="500" y2="172" stroke="#000000" stroke-width="2"/>
+  <text class="label" x="430" y="160" text-anchor="middle">TCP/IP</text>
+
+  <line x1="840" y1="172" x2="1010" y2="172" stroke="#000000" stroke-width="2"/>
+  <text class="label" x="950" y="160" text-anchor="middle">HTTP / WebSocket</text>
+</svg>

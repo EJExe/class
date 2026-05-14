@@ -1,0 +1,15 @@
+Рисунок 2. Диаграмма вариантов использования
+SVG: figure2_use_case_diagram.svg
+PNG: figure2_use_case_diagram.png
+
+Рисунок 3. Диаграмма состояний интерфейса пользователя
+SVG: figure3_ui_state_diagram.svg
+PNG: figure3_ui_state_diagram.png
+
+Рисунок 4. Концептуальная схема приложения
+SVG: figure4_conceptual_schema.svg
+PNG: figure4_conceptual_schema.png
+
+Рисунок 23. Диаграмма классов
+SVG: figure23_class_diagram.svg
+PNG: figure23_class_diagram.png

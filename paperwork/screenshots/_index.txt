@@ -1,0 +1,14 @@
+01_authorization.png - Экран авторизации и регистрации
+02_courses.png - Экран списка курсов
+03_profile.png - Экран профиля пользователя
+04_notifications.png - Экран уведомлений
+05_course_admin_chat.png - Экран курса и чата для преподавателя/администратора
+06_groups.png - Экран управления группами
+07_assignment_admin.png - Экран задания для преподавателя/администратора
+08_gradebook.png - Экран ведомости
+09_review_queue.png - Экран очереди проверки
+10_audit_logs.png - Экран журнала аудита
+11_files_library.png - Экран библиотеки файлов
+12_video_room.png - Экран видеокомнаты
+13_course_student.png - Экран курса для студента
+14_assignment_student.png - Экран задания для студента

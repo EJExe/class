@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100">
+  <defs>
+    <style>
+      .line {
+        stroke: #000;
+        stroke-width: 3;
+        fill: none;
+      }
+      .label {
+        font-family: Arial, "DejaVu Sans", sans-serif;
+        font-size: 34px;
+        fill: #000;
+      }
+      .branch {
+        font-family: Arial, "DejaVu Sans", sans-serif;
+        font-size: 28px;
+        fill: #000;
+      }
+    </style>
+  </defs>
+
+  <!-- Main spine -->
+  <line class="line" x1="90" y1="550" x2="1700" y2="550" />
+  <polygon points="1700,550 1668,536 1668,564" fill="#000" />
+
+  <!-- Effect -->
+  <text class="label" x="1080" y="500">
+    <tspan x="1080" dy="0">Отсутствие единой эффективной цифровой среды</tspan>
+    <tspan x="1080" dy="42">для организации учебного процесса</tspan>
+  </text>
+
+  <!-- Branch 1 -->
+  <line class="line" x1="300" y1="130" x2="500" y2="550" />
+  <polygon points="500,550 473,539 489,517" fill="#000" />
+  <text class="branch" text-anchor="middle" transform="translate(250 320) rotate(-59)">
+    <tspan x="0" dy="0">Неудобство</tspan>
+    <tspan x="0" dy="34">взаимодействия</tspan>
+    <tspan x="0" dy="34">с системой</tspan>
+  </text>
+
+  <!-- Branch 2 -->
+  <line class="line" x1="720" y1="120" x2="910" y2="550" />
+  <polygon points="910,550 882,539 899,516" fill="#000" />
+  <text class="branch" text-anchor="middle" transform="translate(710 300) rotate(-58)">
+    <tspan x="0" dy="0">Разрозненность</tspan>
+    <tspan x="0" dy="34">информации</tspan>
+  </text>
+
+  <!-- Branch 3 -->
+  <line class="line" x1="760" y1="950" x2="1010" y2="550" />
+  <polygon points="1010,550 985,565 963,551" fill="#000" />
+  <text class="branch" text-anchor="middle" transform="translate(840 760) rotate(58)">
+    <tspan x="0" dy="0">Недостаточный</tspan>
+    <tspan x="0" dy="34">контроль сроков</tspan>
+    <tspan x="0" dy="34">и проверки работ</tspan>
+  </text>
+
+  <!-- Branch 4 -->
+  <line class="line" x1="1160" y1="930" x2="1080" y2="550" />
+  <polygon points="1080,550 1097,574 1073,579" fill="#000" />
+  <text class="branch" text-anchor="middle" transform="translate(1140 785) rotate(77)">
+    <tspan x="0" dy="0">Ограниченные</tspan>
+    <tspan x="0" dy="34">средства</tspan>
+    <tspan x="0" dy="34">администрирования</tspan>
+  </text>
+</svg>

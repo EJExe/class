@@ -1,0 +1,280 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2300" height="1450" viewBox="0 0 2300 1450">
+  <defs>
+    <style>
+      .box { fill: #ffffff; stroke: #000000; stroke-width: 2; }
+      .head { fill: #f1f1f1; stroke: #000000; stroke-width: 2; }
+      .line { fill: none; stroke: #000000; stroke-width: 2; }
+      .dash { fill: none; stroke: #000000; stroke-width: 2; stroke-dasharray: 8 6; }
+      .title { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 18px; font-weight: 700; }
+      .text { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 17px; }
+      .small { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 16px; }
+    </style>
+  </defs>
+
+  <!-- Enumerations -->
+  <rect class="box" x="40" y="30" width="250" height="120"/>
+  <rect class="head" x="40" y="30" width="250" height="40"/>
+  <text class="title" x="165" y="55" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+  <text class="title" x="165" y="88" text-anchor="middle">CourseRole</text>
+  <text class="small" x="60" y="118">admin, teacher, assistant,</text>
+  <text class="small" x="60" y="138">student</text>
+
+  <rect class="box" x="330" y="30" width="220" height="105"/>
+  <rect class="head" x="330" y="30" width="220" height="40"/>
+  <text class="title" x="440" y="55" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+  <text class="title" x="440" y="88" text-anchor="middle">ChannelType</text>
+  <text class="small" x="350" y="118">text, assignment</text>
+
+  <rect class="box" x="590" y="30" width="250" height="105"/>
+  <rect class="head" x="590" y="30" width="250" height="40"/>
+  <text class="title" x="715" y="55" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+  <text class="title" x="715" y="88" text-anchor="middle">AssignmentStatus</text>
+  <text class="small" x="610" y="118">draft, active, closed</text>
+
+  <rect class="box" x="880" y="30" width="280" height="120"/>
+  <rect class="head" x="880" y="30" width="280" height="40"/>
+  <text class="title" x="1020" y="55" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+  <text class="title" x="1020" y="88" text-anchor="middle">SubmissionStatus</text>
+  <text class="small" x="900" y="118">draft, submitted, reviewed,</text>
+  <text class="small" x="900" y="138">returned_for_revision</text>
+
+  <rect class="box" x="1200" y="30" width="280" height="105"/>
+  <rect class="head" x="1200" y="30" width="280" height="40"/>
+  <text class="title" x="1340" y="55" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+  <text class="title" x="1340" y="88" text-anchor="middle">NotificationType</text>
+  <text class="small" x="1220" y="118">assignment, submission,</text>
+
+  <!-- User -->
+  <rect class="box" x="40" y="220" width="360" height="300"/>
+  <rect class="head" x="40" y="220" width="360" height="42"/>
+  <text class="title" x="220" y="247" text-anchor="middle">Пользователь</text>
+  <text class="text" x="60" y="290">+id: uuid</text>
+  <text class="text" x="60" y="318">+login: string</text>
+  <text class="text" x="60" y="346">+email: string</text>
+  <text class="text" x="60" y="374">+nickname: string</text>
+  <text class="text" x="60" y="402">+fullName: string</text>
+  <text class="text" x="60" y="430">+birthDate: datetime</text>
+  <text class="text" x="60" y="458">+avatarPath: string</text>
+  <text class="text" x="60" y="486">+createdAt: datetime</text>
+
+  <!-- Session -->
+  <rect class="box" x="40" y="620" width="300" height="165"/>
+  <rect class="head" x="40" y="620" width="300" height="42"/>
+  <text class="title" x="190" y="647" text-anchor="middle">Сессия</text>
+  <text class="text" x="60" y="690">+id: uuid</text>
+  <text class="text" x="60" y="718">+token: string</text>
+  <text class="text" x="60" y="746">+expiresAt: datetime</text>
+
+  <!-- Notification -->
+  <rect class="box" x="40" y="885" width="320" height="190"/>
+  <rect class="head" x="40" y="885" width="320" height="42"/>
+  <text class="title" x="200" y="912" text-anchor="middle">Уведомление</text>
+  <text class="text" x="60" y="955">+id: uuid</text>
+  <text class="text" x="60" y="983">+type: NotificationType</text>
+  <text class="text" x="60" y="1011">+title: string</text>
+  <text class="text" x="60" y="1039">+isRead: bool</text>
+
+  <!-- Course -->
+  <rect class="box" x="520" y="220" width="340" height="220"/>
+  <rect class="head" x="520" y="220" width="340" height="42"/>
+  <text class="title" x="690" y="247" text-anchor="middle">Курс</text>
+  <text class="text" x="540" y="290">+id: uuid</text>
+  <text class="text" x="540" y="318">+title: string</text>
+  <text class="text" x="540" y="346">+description: text</text>
+  <text class="text" x="540" y="374">+inviteCode: string</text>
+  <text class="text" x="540" y="402">+createdAt: datetime</text>
+
+  <!-- CourseMember -->
+  <rect class="box" x="520" y="520" width="330" height="185"/>
+  <rect class="head" x="520" y="520" width="330" height="42"/>
+  <text class="title" x="685" y="547" text-anchor="middle">Участник курса</text>
+  <text class="text" x="540" y="590">+id: uuid</text>
+  <text class="text" x="540" y="618">+role: CourseRole</text>
+  <text class="text" x="540" y="646">+joinedAt: datetime</text>
+
+  <!-- CourseGroup -->
+  <rect class="box" x="520" y="805" width="330" height="170"/>
+  <rect class="head" x="520" y="805" width="330" height="42"/>
+  <text class="title" x="685" y="832" text-anchor="middle">Учебная группа</text>
+  <text class="text" x="540" y="875">+id: uuid</text>
+  <text class="text" x="540" y="903">+name: string</text>
+  <text class="text" x="540" y="931">+createdAt: datetime</text>
+
+  <!-- Channel -->
+  <rect class="box" x="980" y="220" width="350" height="235"/>
+  <rect class="head" x="980" y="220" width="350" height="42"/>
+  <text class="title" x="1155" y="247" text-anchor="middle">Канал</text>
+  <text class="text" x="1000" y="290">+id: uuid</text>
+  <text class="text" x="1000" y="318">+name: string</text>
+  <text class="text" x="1000" y="346">+description: text</text>
+  <text class="text" x="1000" y="374">+type: ChannelType</text>
+  <text class="text" x="1000" y="402">+createdAt: datetime</text>
+
+  <!-- ChannelGroupAccess -->
+  <rect class="box" x="980" y="540" width="350" height="165"/>
+  <rect class="head" x="980" y="540" width="350" height="42"/>
+  <text class="title" x="1155" y="567" text-anchor="middle">Доступ группы к каналу</text>
+  <text class="text" x="1000" y="610">+id: uuid</text>
+  <text class="text" x="1000" y="638">+channelId: uuid</text>
+  <text class="text" x="1000" y="666">+groupId: uuid</text>
+
+  <!-- Message -->
+  <rect class="box" x="980" y="805" width="350" height="220"/>
+  <rect class="head" x="980" y="805" width="350" height="42"/>
+  <text class="title" x="1155" y="832" text-anchor="middle">Сообщение</text>
+  <text class="text" x="1000" y="875">+id: uuid</text>
+  <text class="text" x="1000" y="903">+content: text</text>
+  <text class="text" x="1000" y="931">+createdAt: datetime</text>
+  <text class="text" x="1000" y="959">+editedAt: datetime</text>
+
+  <!-- MessageAttachment -->
+  <rect class="box" x="980" y="1125" width="350" height="175"/>
+  <rect class="head" x="980" y="1125" width="350" height="42"/>
+  <text class="title" x="1155" y="1152" text-anchor="middle">Вложение сообщения</text>
+  <text class="text" x="1000" y="1195">+id: uuid</text>
+  <text class="text" x="1000" y="1223">+originalName: string</text>
+  <text class="text" x="1000" y="1251">+path: string</text>
+
+  <!-- Assignment -->
+  <rect class="box" x="1460" y="220" width="360" height="250"/>
+  <rect class="head" x="1460" y="220" width="360" height="42"/>
+  <text class="title" x="1640" y="247" text-anchor="middle">Задание</text>
+  <text class="text" x="1480" y="290">+id: uuid</text>
+  <text class="text" x="1480" y="318">+title: string</text>
+  <text class="text" x="1480" y="346">+description: text</text>
+  <text class="text" x="1480" y="374">+status: AssignmentStatus</text>
+  <text class="text" x="1480" y="402">+deadlineAt: datetime</text>
+  <text class="text" x="1480" y="430">+createdAt: datetime</text>
+
+  <!-- AssignmentFile -->
+  <rect class="box" x="1460" y="560" width="340" height="180"/>
+  <rect class="head" x="1460" y="560" width="340" height="42"/>
+  <text class="title" x="1630" y="587" text-anchor="middle">Файл задания</text>
+  <text class="text" x="1480" y="630">+id: uuid</text>
+  <text class="text" x="1480" y="658">+originalName: string</text>
+  <text class="text" x="1480" y="686">+path: string</text>
+
+  <!-- Submission -->
+  <rect class="box" x="1460" y="840" width="360" height="255"/>
+  <rect class="head" x="1460" y="840" width="360" height="42"/>
+  <text class="title" x="1640" y="867" text-anchor="middle">Сдача работы</text>
+  <text class="text" x="1480" y="910">+id: uuid</text>
+  <text class="text" x="1480" y="938">+status: SubmissionStatus</text>
+  <text class="text" x="1480" y="966">+isLate: bool</text>
+  <text class="text" x="1480" y="994">+submittedAt: datetime</text>
+  <text class="text" x="1480" y="1022">+grade: string</text>
+  <text class="text" x="1480" y="1050">+teacherComment: text</text>
+
+  <!-- SubmissionFile -->
+  <rect class="box" x="1460" y="1185" width="340" height="180"/>
+  <rect class="head" x="1460" y="1185" width="340" height="42"/>
+  <text class="title" x="1630" y="1212" text-anchor="middle">Файл сдачи</text>
+  <text class="text" x="1480" y="1255">+id: uuid</text>
+  <text class="text" x="1480" y="1283">+originalName: string</text>
+  <text class="text" x="1480" y="1311">+uploadedAt: datetime</text>
+
+  <!-- VideoRoom -->
+  <rect class="box" x="1940" y="220" width="300" height="180"/>
+  <rect class="head" x="1940" y="220" width="300" height="42"/>
+  <text class="title" x="2090" y="247" text-anchor="middle">Видеокомната</text>
+  <text class="text" x="1960" y="290">+id: uuid</text>
+  <text class="text" x="1960" y="318">+title: string</text>
+  <text class="text" x="1960" y="346">+maxParticipants: int</text>
+
+  <!-- VideoRoomParticipant -->
+  <rect class="box" x="1940" y="520" width="320" height="205"/>
+  <rect class="head" x="1940" y="520" width="320" height="42"/>
+  <text class="title" x="2100" y="547" text-anchor="middle">Участник видеокомнаты</text>
+  <text class="text" x="1960" y="590">+id: uuid</text>
+  <text class="text" x="1960" y="618">+peerId: string</text>
+  <text class="text" x="1960" y="646">+joinedAt: datetime</text>
+  <text class="text" x="1960" y="674">+leftAt: datetime</text>
+
+  <!-- Direct relations -->
+  <line class="line" x1="220" y1="520" x2="190" y2="620"/>
+  <text class="small" x="232" y="568">1</text>
+  <text class="small" x="198" y="608">0..*</text>
+
+  <line class="line" x1="400" y1="360" x2="520" y2="590"/>
+  <text class="small" x="410" y="392">1</text>
+  <text class="small" x="498" y="560">0..*</text>
+
+  <line class="line" x1="690" y1="440" x2="685" y2="520"/>
+  <text class="small" x="704" y="482">1</text>
+  <text class="small" x="698" y="514">0..*</text>
+
+  <line class="line" x1="690" y1="440" x2="685" y2="805"/>
+  <text class="small" x="704" y="624">1</text>
+  <text class="small" x="698" y="796">0..*</text>
+
+  <line class="line" x1="860" y1="338" x2="980" y2="338"/>
+  <text class="small" x="876" y="324">1</text>
+  <text class="small" x="940" y="324">0..*</text>
+
+  <line class="line" x1="1155" y1="455" x2="1155" y2="540"/>
+  <text class="small" x="1168" y="492">1</text>
+  <text class="small" x="1168" y="532">0..*</text>
+
+  <line class="line" x1="850" y1="890" x2="980" y2="622"/>
+  <text class="small" x="864" y="860">1</text>
+  <text class="small" x="938" y="654">0..*</text>
+
+  <line class="line" x1="1330" y1="338" x2="1460" y2="338"/>
+  <text class="small" x="1350" y="324">1</text>
+  <text class="small" x="1414" y="324">0..1</text>
+
+  <line class="line" x1="1640" y1="470" x2="1630" y2="560"/>
+  <text class="small" x="1652" y="512">1</text>
+  <text class="small" x="1642" y="552">0..*</text>
+
+  <line class="line" x1="400" y1="455" x2="1460" y2="965"/>
+  <text class="small" x="420" y="470">1</text>
+  <text class="small" x="1418" y="950">0..*</text>
+
+  <line class="line" x1="1640" y1="470" x2="1640" y2="840"/>
+  <text class="small" x="1652" y="660">1</text>
+  <text class="small" x="1652" y="832">0..*</text>
+
+  <line class="line" x1="1640" y1="1095" x2="1630" y2="1185"/>
+  <text class="small" x="1652" y="1138">1</text>
+  <text class="small" x="1642" y="1178">0..*</text>
+
+  <line class="line" x1="1330" y1="915" x2="1460" y2="915"/>
+  <text class="small" x="1370" y="900">1</text>
+  <text class="small" x="1418" y="900">0..*</text>
+
+  <line class="line" x1="400" y1="420" x2="980" y2="915"/>
+  <text class="small" x="420" y="438">1</text>
+  <text class="small" x="940" y="892">0..*</text>
+
+  <line class="line" x1="1155" y1="705" x2="1155" y2="805"/>
+  <text class="small" x="1168" y="748">1</text>
+  <text class="small" x="1168" y="796">0..*</text>
+
+  <line class="line" x1="400" y1="300" x2="980" y2="300"/>
+  <text class="small" x="420" y="286">1</text>
+  <text class="small" x="934" y="286">0..*</text>
+
+  <line class="line" x1="1330" y1="300" x2="1940" y2="300"/>
+  <text class="small" x="1360" y="286">1</text>
+  <text class="small" x="1888" y="286">0..1</text>
+
+  <line class="line" x1="2090" y1="400" x2="2100" y2="520"/>
+  <text class="small" x="2102" y="452">1</text>
+  <text class="small" x="2112" y="512">0..*</text>
+
+  <line class="line" x1="400" y1="500" x2="1940" y2="620"/>
+  <text class="small" x="420" y="516">1</text>
+  <text class="small" x="1888" y="606">0..*</text>
+
+  <line class="line" x1="400" y1="980" x2="40" y2="980"/>
+  <text class="small" x="370" y="966">1</text>
+  <text class="small" x="58" y="966">0..*</text>
+
+  <!-- Enum usage -->
+  <line class="dash" x1="685" y1="520" x2="165" y2="150"/>
+  <line class="dash" x1="1155" y1="220" x2="440" y2="135"/>
+  <line class="dash" x1="1640" y1="220" x2="715" y2="135"/>
+  <line class="dash" x1="1640" y1="840" x2="1020" y2="150"/>
+  <line class="dash" x1="200" y1="885" x2="1340" y2="135"/>
+</svg>

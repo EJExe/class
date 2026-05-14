@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1380" viewBox="0 0 1800 1380">
+  <defs>
+    <style>
+      .sys { fill: #ffffff; stroke: #000000; stroke-width: 2.2; }
+      .usecase { fill: #ffffff; stroke: #000000; stroke-width: 2; }
+      .line { fill: none; stroke: #000000; stroke-width: 2; }
+      .dash { fill: none; stroke: #000000; stroke-width: 2; stroke-dasharray: 8 6; }
+      .title { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 26px; font-weight: 700; }
+      .text { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 21px; }
+      .small { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 18px; }
+      .actor { font-family: Arial, "DejaVu Sans", sans-serif; font-size: 22px; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#000000"/>
+    </marker>
+    <marker id="triangle" markerWidth="16" markerHeight="14" refX="14" refY="7" orient="auto">
+      <path d="M0,7 L14,0 L14,14 z" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+    </marker>
+  </defs>
+
+  <rect class="sys" x="420" y="40" width="1320" height="1280"/>
+  <line class="line" x1="420" y1="92" x2="1740" y2="92"/>
+  <text class="title" x="1080" y="74" text-anchor="middle">Система организации учебного процесса</text>
+
+  <!-- Actors -->
+  <circle cx="150" cy="180" r="18" class="line"/>
+  <line x1="150" y1="198" x2="150" y2="255" class="line"/>
+  <line x1="120" y1="220" x2="180" y2="220" class="line"/>
+  <line x1="150" y1="255" x2="125" y2="300" class="line"/>
+  <line x1="150" y1="255" x2="175" y2="300" class="line"/>
+  <text class="actor" x="150" y="338" text-anchor="middle">Гость</text>
+
+  <circle cx="150" cy="455" r="18" class="line"/>
+  <line x1="150" y1="473" x2="150" y2="530" class="line"/>
+  <line x1="120" y1="495" x2="180" y2="495" class="line"/>
+  <line x1="150" y1="530" x2="125" y2="575" class="line"/>
+  <line x1="150" y1="530" x2="175" y2="575" class="line"/>
+  <text class="actor" x="150" y="610" text-anchor="middle">Авторизованный</text>
+  <text class="actor" x="150" y="638" text-anchor="middle">пользователь</text>
+
+  <circle cx="150" cy="770" r="18" class="line"/>
+  <line x1="150" y1="788" x2="150" y2="845" class="line"/>
+  <line x1="120" y1="810" x2="180" y2="810" class="line"/>
+  <line x1="150" y1="845" x2="125" y2="890" class="line"/>
+  <line x1="150" y1="845" x2="175" y2="890" class="line"/>
+  <text class="actor" x="150" y="925" text-anchor="middle">Студент</text>
+
+  <circle cx="150" cy="1035" r="18" class="line"/>
+  <line x1="150" y1="1053" x2="150" y2="1110" class="line"/>
+  <line x1="120" y1="1075" x2="180" y2="1075" class="line"/>
+  <line x1="150" y1="1110" x2="125" y2="1155" class="line"/>
+  <line x1="150" y1="1110" x2="175" y2="1155" class="line"/>
+  <text class="actor" x="150" y="1190" text-anchor="middle">Преподаватель</text>
+
+  <circle cx="150" cy="1245" r="18" class="line"/>
+  <line x1="150" y1="1263" x2="150" y2="1320" class="line"/>
+  <line x1="120" y1="1285" x2="180" y2="1285" class="line"/>
+  <line x1="150" y1="1320" x2="125" y2="1365" class="line"/>
+  <line x1="150" y1="1320" x2="175" y2="1365" class="line"/>
+  <text class="actor" x="150" y="1375" text-anchor="middle">Администратор</text>
+
+  <!-- Actor generalization -->
+  <line class="line" x1="230" y1="770" x2="230" y2="610"/>
+  <line class="line" x1="230" y1="610" x2="205" y2="610" marker-end="url(#triangle)"/>
+
+  <line class="line" x1="250" y1="1035" x2="250" y2="610"/>
+  <line class="line" x1="250" y1="610" x2="205" y2="610" marker-end="url(#triangle)"/>
+
+  <line class="line" x1="270" y1="1245" x2="270" y2="610"/>
+  <line class="line" x1="270" y1="610" x2="205" y2="610" marker-end="url(#triangle)"/>
+
+  <!-- Guest -->
+  <ellipse class="usecase" cx="710" cy="170" rx="132" ry="34"/>
+  <text class="text" x="710" y="177" text-anchor="middle">Авторизоваться</text>
+
+  <ellipse class="usecase" cx="710" cy="250" rx="150" ry="34"/>
+  <text class="text" x="710" y="257" text-anchor="middle">Зарегистрироваться</text>
+
+  <!-- Authorized -->
+  <ellipse class="usecase" cx="710" cy="360" rx="188" ry="38"/>
+  <text class="text" x="710" y="367" text-anchor="middle">Просмотреть список курсов</text>
+
+  <ellipse class="usecase" cx="710" cy="450" rx="132" ry="34"/>
+  <text class="text" x="710" y="457" text-anchor="middle">Открыть профиль</text>
+
+  <ellipse class="usecase" cx="710" cy="535" rx="158" ry="34"/>
+  <text class="text" x="710" y="542" text-anchor="middle">Просмотреть уведомления</text>
+
+  <ellipse class="usecase" cx="710" cy="620" rx="140" ry="34"/>
+  <text class="text" x="710" y="627" text-anchor="middle">Выйти из аккаунта</text>
+
+  <!-- Student -->
+  <ellipse class="usecase" cx="710" cy="735" rx="208" ry="42"/>
+  <text class="text" x="710" y="726" text-anchor="middle">Просмотреть доступные</text>
+  <text class="text" x="710" y="752" text-anchor="middle">каналы курса</text>
+
+  <ellipse class="usecase" cx="710" cy="840" rx="150" ry="34"/>
+  <text class="text" x="710" y="847" text-anchor="middle">Просмотреть задание</text>
+
+  <ellipse class="usecase" cx="710" cy="930" rx="162" ry="38"/>
+  <text class="text" x="710" y="921" text-anchor="middle">Загрузить файл</text>
+  <text class="text" x="710" y="947" text-anchor="middle">работы</text>
+
+  <ellipse class="usecase" cx="710" cy="1030" rx="190" ry="42"/>
+  <text class="text" x="710" y="1021" text-anchor="middle">Отправить работу</text>
+  <text class="text" x="710" y="1047" text-anchor="middle">на проверку</text>
+
+  <ellipse class="usecase" cx="710" cy="1140" rx="212" ry="42"/>
+  <text class="text" x="710" y="1131" text-anchor="middle">Просмотреть комментарии</text>
+  <text class="text" x="710" y="1157" text-anchor="middle">преподавателя</text>
+
+  <ellipse class="usecase" cx="710" cy="1245" rx="180" ry="38"/>
+  <text class="text" x="710" y="1236" text-anchor="middle">Просмотреть библиотеку</text>
+  <text class="text" x="710" y="1262" text-anchor="middle">файлов</text>
+
+  <ellipse class="usecase" cx="710" cy="1335" rx="182" ry="38"/>
+  <text class="text" x="710" y="1326" text-anchor="middle">Подключиться</text>
+  <text class="text" x="710" y="1352" text-anchor="middle">к видеокомнате</text>
+
+  <!-- Teacher -->
+  <ellipse class="usecase" cx="1145" cy="700" rx="120" ry="34"/>
+  <text class="text" x="1145" y="707" text-anchor="middle">Создать курс</text>
+
+  <ellipse class="usecase" cx="1145" cy="785" rx="130" ry="34"/>
+  <text class="text" x="1145" y="792" text-anchor="middle">Создать группу</text>
+
+  <ellipse class="usecase" cx="1145" cy="870" rx="128" ry="34"/>
+  <text class="text" x="1145" y="877" text-anchor="middle">Создать канал</text>
+
+  <ellipse class="usecase" cx="1145" cy="955" rx="138" ry="34"/>
+  <text class="text" x="1145" y="962" text-anchor="middle">Создать задание</text>
+
+  <ellipse class="usecase" cx="1145" cy="1045" rx="184" ry="38"/>
+  <text class="text" x="1145" y="1036" text-anchor="middle">Загрузить материалы</text>
+  <text class="text" x="1145" y="1062" text-anchor="middle">задания</text>
+
+  <ellipse class="usecase" cx="1145" cy="1145" rx="176" ry="38"/>
+  <text class="text" x="1145" y="1136" text-anchor="middle">Просмотреть работы</text>
+  <text class="text" x="1145" y="1162" text-anchor="middle">студентов</text>
+
+  <ellipse class="usecase" cx="1145" cy="1245" rx="152" ry="38"/>
+  <text class="text" x="1145" y="1236" text-anchor="middle">Проверить</text>
+  <text class="text" x="1145" y="1262" text-anchor="middle">работу студента</text>
+
+  <ellipse class="usecase" cx="1445" cy="1188" rx="126" ry="34"/>
+  <text class="text" x="1445" y="1195" text-anchor="middle">Выставить оценку</text>
+
+  <ellipse class="usecase" cx="1445" cy="1272" rx="156" ry="34"/>
+  <text class="text" x="1445" y="1279" text-anchor="middle">Оставить комментарий</text>
+
+  <ellipse class="usecase" cx="1145" cy="1335" rx="164" ry="38"/>
+  <text class="text" x="1145" y="1326" text-anchor="middle">Просмотреть очередь</text>
+  <text class="text" x="1145" y="1352" text-anchor="middle">проверки</text>
+
+  <ellipse class="usecase" cx="1445" cy="700" rx="142" ry="34"/>
+  <text class="text" x="1445" y="707" text-anchor="middle">Просмотреть ведомость</text>
+
+  <!-- Admin -->
+  <ellipse class="usecase" cx="1445" cy="790" rx="176" ry="38"/>
+  <text class="text" x="1445" y="781" text-anchor="middle">Управлять ролями</text>
+  <text class="text" x="1445" y="807" text-anchor="middle">пользователей</text>
+
+  <ellipse class="usecase" cx="1445" cy="890" rx="156" ry="38"/>
+  <text class="text" x="1445" y="881" text-anchor="middle">Просматривать</text>
+  <text class="text" x="1445" y="907" text-anchor="middle">журнал аудита</text>
+
+  <ellipse class="usecase" cx="1445" cy="990" rx="174" ry="38"/>
+  <text class="text" x="1445" y="981" text-anchor="middle">Экспортировать</text>
+  <text class="text" x="1445" y="1007" text-anchor="middle">данные курса</text>
+
+  <!-- Associations -->
+  <line class="line" x1="200" y1="180" x2="578" y2="170"/>
+  <line class="line" x1="200" y1="198" x2="560" y2="250"/>
+
+  <line class="line" x1="200" y1="450" x2="522" y2="360"/>
+  <line class="line" x1="200" y1="475" x2="578" y2="450"/>
+  <line class="line" x1="200" y1="500" x2="552" y2="535"/>
+  <line class="line" x1="200" y1="525" x2="570" y2="620"/>
+
+  <line class="line" x1="200" y1="770" x2="502" y2="735"/>
+  <line class="line" x1="200" y1="795" x2="560" y2="840"/>
+  <line class="line" x1="200" y1="820" x2="548" y2="930"/>
+  <line class="line" x1="200" y1="845" x2="520" y2="1030"/>
+  <line class="line" x1="200" y1="870" x2="498" y2="1140"/>
+  <line class="line" x1="200" y1="895" x2="530" y2="1245"/>
+  <line class="line" x1="200" y1="920" x2="528" y2="1335"/>
+
+  <line class="line" x1="200" y1="1035" x2="1025" y2="700"/>
+  <line class="line" x1="200" y1="1055" x2="1015" y2="785"/>
+  <line class="line" x1="200" y1="1075" x2="1017" y2="870"/>
+  <line class="line" x1="200" y1="1095" x2="1007" y2="955"/>
+  <line class="line" x1="200" y1="1115" x2="961" y2="1045"/>
+  <line class="line" x1="200" y1="1135" x2="969" y2="1145"/>
+  <line class="line" x1="200" y1="1155" x2="993" y2="1245"/>
+  <line class="line" x1="200" y1="1175" x2="981" y2="1335"/>
+  <line class="line" x1="200" y1="1195" x2="528" y2="1335"/>
+
+  <line class="line" x1="290" y1="1235" x2="1303" y2="790"/>
+  <line class="line" x1="290" y1="1255" x2="1289" y2="890"/>
+  <line class="line" x1="290" y1="1275" x2="1271" y2="990"/>
+  <line class="line" x1="290" y1="1295" x2="1303" y2="700"/>
+
+  <!-- Include / Extend -->
+  <line class="dash" x1="846" y1="1030" x2="548" y2="930" marker-end="url(#arrow)"/>
+  <text class="small" x="690" y="975" text-anchor="middle">&lt;&lt;include&gt;&gt;</text>
+
+  <line class="dash" x1="864" y1="1140" x2="860" y2="862"/>
+  <line class="dash" x1="860" y1="862" x2="838" y2="862" marker-end="url(#arrow)"/>
+  <text class="small" x="890" y="930">&lt;&lt;extend&gt;&gt;</text>
+
+  <line class="dash" x1="1297" y1="1245" x2="1320" y2="1198" marker-end="url(#arrow)"/>
+  <text class="small" x="1256" y="1204">&lt;&lt;include&gt;&gt;</text>
+
+  <line class="dash" x1="1300" y1="1262" x2="1286" y2="1268" marker-end="url(#arrow)"/>
+  <text class="small" x="1220" y="1298">&lt;&lt;include&gt;&gt;</text>
+</svg>
