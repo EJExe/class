@@ -34,7 +34,16 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `HTTP ${response.status}`);
+    let message = text;
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed.message)) {
+        message = parsed.message.join('; ') || text;
+      } else {
+        message = parsed.message || text;
+      }
+    } catch {}
+    throw new Error(message || `HTTP ${response.status}`);
   }
 
   if (response.status === 204) {

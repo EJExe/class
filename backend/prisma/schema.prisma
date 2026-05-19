@@ -415,3 +415,4 @@ model VideoRoomParticipant {
   @@index([roomId])
   @@index([userId])
 }
+

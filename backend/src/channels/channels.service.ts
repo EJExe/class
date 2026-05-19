@@ -103,7 +103,7 @@ export class ChannelsService {
             {
               OR: [
                 { type: ChannelType.text },
-                { assignment: { is: { status: { not: AssignmentStatus.draft }, deletedAt: null } } },
+                { assignment: { is: { status: { notIn: [AssignmentStatus.draft, AssignmentStatus.archived] }, deletedAt: null } } },
               ],
             },
           ],
@@ -155,28 +155,33 @@ export class ChannelsService {
       },
     });
 
-    return channels.map((channel) => {
-      const channelReadAt = channel.readStates[0]?.lastReadAt?.getTime() ?? 0;
-      const latestMessageAt = channel.messages[0]?.createdAt?.getTime() ?? 0;
+    return channels
+      .map((channel) => {
+        const channelReadAt = channel.readStates[0]?.lastReadAt?.getTime() ?? 0;
+        const latestMessageAt = channel.messages[0]?.createdAt?.getTime() ?? 0;
 
-      const assignmentReadAt = channel.assignment?.readStates?.[0]?.lastReadAt?.getTime() ?? 0;
-      const latestAssignmentAt = channel.assignment?.updatedAt?.getTime?.() ?? 0;
-      const latestSubmissionAt = channel.assignment?.submissions?.[0]
-        ? ((channel.assignment.submissions[0].submittedAt ?? channel.assignment.submissions[0].updatedAt)?.getTime?.() ??
-          0)
-        : 0;
+        const assignmentReadAt = channel.assignment?.readStates?.[0]?.lastReadAt?.getTime() ?? 0;
+        const latestAssignmentAt = channel.assignment?.updatedAt?.getTime?.() ?? 0;
+        const latestSubmissionAt = channel.assignment?.submissions?.[0]
+          ? ((channel.assignment.submissions[0].submittedAt ?? channel.assignment.submissions[0].updatedAt)?.getTime?.() ??
+            0)
+          : 0;
 
-      return {
-        ...channel,
-        hasUnreadMessages: latestMessageAt > channelReadAt,
-        assignment: channel.assignment
-          ? {
-              ...channel.assignment,
-              hasUnread: Math.max(latestAssignmentAt, latestSubmissionAt) > assignmentReadAt,
-            }
-          : null,
-      };
-    });
+        return {
+          ...channel,
+          hasUnreadMessages: latestMessageAt > channelReadAt,
+          assignment: channel.assignment
+            ? {
+                ...channel.assignment,
+                hasUnread: Math.max(latestAssignmentAt, latestSubmissionAt) > assignmentReadAt,
+              }
+            : null,
+        };
+      })
+      .sort((a, b) => {
+        if (a.type === b.type) return 0;
+        return a.type === 'text' ? -1 : 1;
+      });
   }
 
   async getChannel(userId: string, channelId: string) {

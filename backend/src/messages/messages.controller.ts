@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolve } from 'path';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -21,22 +22,17 @@ import { CreateMessageReactionDto } from './dto/create-message-reaction.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { MessagesService } from './messages.service';
 
+@ApiTags('Messages')
+@ApiBearerAuth()
 @Controller()
 @UseGuards(SessionAuthGuard)
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  private setDownloadHeaders(res: any, file: { originalName: string; mimeType?: string | null }) {
-    const encodedName = encodeURIComponent(file.originalName);
-    const fallbackName = file.originalName.replace(/[^\x20-\x7E]+/g, '_') || 'download';
-    res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
-    );
-  }
-
   @Get('channels/:id/messages')
+  @ApiOperation({ summary: 'Список сообщений канала (с курсорной пагинацией)' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'ID сообщения-курсора' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Лимит (по умолчанию 30)' })
   list(
     @CurrentUser() user: { id: string },
     @Param('id') channelId: string,
@@ -47,6 +43,9 @@ export class MessagesController {
   }
 
   @Get('channels/:id/messages/search')
+  @ApiOperation({ summary: 'Поиск сообщений в канале' })
+  @ApiQuery({ name: 'q', required: false, description: 'Поисковый запрос' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Лимит (по умолчанию 30)' })
   search(
     @CurrentUser() user: { id: string },
     @Param('id') channelId: string,
@@ -58,6 +57,8 @@ export class MessagesController {
 
   @Post('channels/:id/messages')
   @UseInterceptors(FilesInterceptor('files', 10))
+  @ApiOperation({ summary: 'Отправить сообщение в канал (можно с файлами)' })
+  @ApiConsumes('multipart/form-data')
   create(
     @CurrentUser() user: { id: string },
     @Param('id') channelId: string,
@@ -68,16 +69,19 @@ export class MessagesController {
   }
 
   @Patch('channels/:id/read')
+  @ApiOperation({ summary: 'Отметить канал прочитанным' })
   markRead(@CurrentUser() user: { id: string }, @Param('id') channelId: string) {
     return this.messagesService.markChannelRead(user.id, channelId);
   }
 
   @Delete('messages/:id')
+  @ApiOperation({ summary: 'Удалить сообщение (soft delete)' })
   delete(@CurrentUser() user: { id: string }, @Param('id') messageId: string) {
     return this.messagesService.softDeleteMessage(user.id, messageId);
   }
 
   @Patch('messages/:id')
+  @ApiOperation({ summary: 'Редактировать сообщение' })
   update(
     @CurrentUser() user: { id: string },
     @Param('id') messageId: string,
@@ -87,6 +91,7 @@ export class MessagesController {
   }
 
   @Get('message-files/:id/download')
+  @ApiOperation({ summary: 'Скачать файл из сообщения' })
   async download(@CurrentUser() user: { id: string }, @Param('id') fileId: string, @Res() res: any) {
     const file = await this.messagesService.getMessageFile(user.id, fileId);
     this.setDownloadHeaders(res, file);
@@ -94,6 +99,7 @@ export class MessagesController {
   }
 
   @Post('messages/:id/reactions')
+  @ApiOperation({ summary: 'Добавить реакцию на сообщение' })
   addReaction(
     @CurrentUser() user: { id: string },
     @Param('id') messageId: string,
@@ -103,11 +109,23 @@ export class MessagesController {
   }
 
   @Delete('messages/:id/reactions')
+  @ApiOperation({ summary: 'Удалить свою реакцию с сообщения' })
+  @ApiQuery({ name: 'emoji', required: true, description: 'Emoji для удаления' })
   removeReaction(
     @CurrentUser() user: { id: string },
     @Param('id') messageId: string,
     @Query('emoji') emoji: string,
   ) {
     return this.messagesService.removeReaction(user.id, messageId, emoji);
+  }
+
+  private setDownloadHeaders(res: any, file: { originalName: string; mimeType?: string | null }) {
+    const encodedName = encodeURIComponent(file.originalName);
+    const fallbackName = file.originalName.replace(/[^\x20-\x7E]+/g, '_') || 'download';
+    res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
+    );
   }
 }

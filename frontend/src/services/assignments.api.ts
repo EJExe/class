@@ -108,6 +108,10 @@ export function updatePrivateMessage(token: string, messageId: string, content: 
   }, token);
 }
 
+export function deleteSubmissionFile(token: string, fileId: string) {
+  return apiRequest<any>(`/submission-files/${fileId}`, { method: 'DELETE' }, token);
+}
+
 export function addSubmissionFileComment(token: string, fileId: string, content: string) {
   return apiRequest<any>(`/submission-files/${fileId}/comments`, {
     method: 'POST',

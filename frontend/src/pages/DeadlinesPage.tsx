@@ -81,7 +81,6 @@ export function DeadlinesPage() {
   const { token } = useAuth();
   const [items, setItems] = useState<Array<any>>([]);
   const [courses, setCourses] = useState<Array<any>>([]);
-  const [scope, setScope] = useState<'my' | 'course'>('my');
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'overdue' | 'needs_review'>('all');
   const [view, setView] = useState<'list' | 'week' | 'month'>('list');
@@ -90,23 +89,19 @@ export function DeadlinesPage() {
 
   useEffect(() => {
     if (!token) return;
-    void listCourses(token).then(setCourses);
+    void listCourses(token).then((data) => setCourses(data.items));
   }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    if (scope === 'course' && !selectedCourseId) {
-      setItems([]);
-      return;
-    }
-
+    const effectiveScope = selectedCourseId ? 'course' : 'my';
     void listAssignmentDeadlines(token, {
-      scope,
-      courseId: scope === 'course' ? selectedCourseId || undefined : undefined,
+      scope: effectiveScope,
+      courseId: selectedCourseId || undefined,
       limit: 100,
       filter,
     }).then(setItems);
-  }, [token, scope, selectedCourseId, filter]);
+  }, [token, selectedCourseId, filter]);
 
   const currentWeekStart = startOfWeek(new Date());
   const currentMonthStart = startOfMonth(new Date());
@@ -169,24 +164,15 @@ export function DeadlinesPage() {
 
       <div className="panel col">
         <div className="row">
-          <button className={scope === 'my' ? '' : 'secondary'} onClick={() => setScope('my')}>
-            {'\u041c\u043e\u0438 \u0437\u0430\u0434\u0430\u043d\u0438\u044f'}
-          </button>
-          <button className={scope === 'course' ? '' : 'secondary'} onClick={() => setScope('course')}>
-            {'\u0412\u0441\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430'}
-          </button>
-        </div>
-
-        {scope === 'course' && (
           <select value={selectedCourseId} onChange={(event) => setSelectedCourseId(event.target.value)}>
-            <option value="">{'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043a\u0443\u0440\u0441'}</option>
+            <option value="">{'\u0412\u0441\u0435 \u043a\u0443\u0440\u0441\u044b'}</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
                 {course.title}
               </option>
             ))}
           </select>
-        )}
+        </div>
 
         <div className="row">
           <button className={filter === 'all' ? '' : 'secondary'} onClick={() => setFilter('all')}>

@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { deleteSession } from '../services/auth.api';
+import { Link } from 'react-router-dom';
 import { createCourse, joinCourse, listCourses } from '../services/courses.api';
 import { listNotifications } from '../services/notifications.api';
 import { useAuth } from '../hooks/useAuth';
@@ -14,30 +13,48 @@ function SmallBadge() {
   );
 }
 
+const PAGE_SIZE = 20;
+
 export function CoursesPage() {
-  const { token, setToken } = useAuth();
-  const navigate = useNavigate();
+  const { token } = useAuth();
   const [courses, setCourses] = useState<Array<any>>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [search, setSearch] = useState('');
   const [notifications, setNotifications] = useState<Array<any>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);
   const hasAuditAccess = courses.some((course) => course.role === 'admin');
 
-  const loadCourses = async (query?: string) => {
+  const loadCourses = async (query?: string, pageNum = 1) => {
     if (!token) return;
-    const [coursesData, notificationData] = await Promise.all([listCourses(token, query), listNotifications(token)]);
-    setCourses(coursesData);
+    const [coursesData, notificationData] = await Promise.all([
+      listCourses(token, query, pageNum, PAGE_SIZE),
+      listNotifications(token),
+    ]);
+    setCourses(coursesData.items);
+    setTotal(coursesData.total);
     setNotifications(notificationData);
   };
 
   useEffect(() => {
-    void loadCourses(search);
-  }, [token, search]);
+    void loadCourses(search, page);
+  }, [token, search, page]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const goToPage = (p: number) => {
+    if (p >= 1 && p <= totalPages) setPage(p);
+  };
 
   const onCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -46,7 +63,8 @@ export function CoursesPage() {
       await createCourse(token, { title, description });
       setTitle('');
       setDescription('');
-      await loadCourses(search);
+      setPage(1);
+      await loadCourses(search, 1);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -55,21 +73,15 @@ export function CoursesPage() {
   const onJoin = async (event: FormEvent) => {
     event.preventDefault();
     if (!token) return;
+    setJoinError(null);
     try {
       await joinCourse(token, inviteCode);
       setInviteCode('');
-      await loadCourses(search);
+      setPage(1);
+      await loadCourses(search, 1);
     } catch (err) {
-      setError((err as Error).message);
+      setJoinError((err as Error).message);
     }
-  };
-
-  const onLogout = async () => {
-    if (token) {
-      await deleteSession(token).catch(() => undefined);
-    }
-    setToken(null);
-    navigate('/login');
   };
 
   return (
@@ -88,19 +100,7 @@ export function CoursesPage() {
             Уведомления {unreadCount > 0 && <SmallBadge />}
           </Link>
           {hasAuditAccess && <Link to="/audit">Журнал аудита</Link>}
-          <button className="secondary" onClick={onLogout}>
-            Выйти
-          </button>
         </div>
-      </div>
-
-      <div className="panel col">
-        <h3>Поиск по курсам</h3>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Введите название или описание курса"
-        />
       </div>
 
       <div className="grid-2">
@@ -125,7 +125,17 @@ export function CoursesPage() {
             required
           />
           <button type="submit">Вступить</button>
+          {joinError && <p className="error-text">{joinError}</p>}
         </form>
+      </div>
+
+      <div className="panel col">
+        <h3>Поиск по курсам</h3>
+        <input
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder="Введите название или описание курса"
+        />
       </div>
 
       <div className="panel col">
@@ -146,6 +156,43 @@ export function CoursesPage() {
             <Link to={`/courses/${course.id}`}>Открыть</Link>
           </div>
         ))}
+
+        <div className="row" style={{ justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16 }}>
+            <button
+              className="secondary"
+              disabled={page <= 1}
+              onClick={() => goToPage(page - 1)}
+            >
+              Назад
+            </button>
+
+            <span className="muted" style={{ fontSize: 14 }}>
+              Страница {page} из {totalPages}
+            </span>
+
+            <button
+              className="secondary"
+              disabled={page >= totalPages}
+              onClick={() => goToPage(page + 1)}
+            >
+              Далее
+            </button>
+
+            <span className="muted" style={{ fontSize: 14 }}>|</span>
+
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={page}
+              onChange={(e) => {
+                const p = parseInt(e.target.value, 10);
+                if (!isNaN(p)) goToPage(p);
+              }}
+              style={{ width: 60, textAlign: 'center' }}
+              title={`Перейти к странице (1–${totalPages})`}
+            />
+          </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}

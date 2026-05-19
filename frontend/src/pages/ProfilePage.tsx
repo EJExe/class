@@ -1,11 +1,12 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '../components/UserAvatar';
 import { useAuth } from '../hooks/useAuth';
-import { updateProfile, uploadAvatar } from '../services/auth.api';
+import { deleteSession, updateProfile, uploadAvatar } from '../services/auth.api';
 
 export function ProfilePage() {
-  const { token, user, reloadMe } = useAuth();
+  const { token, user, reloadMe, setToken } = useAuth();
+  const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     login: '',
@@ -20,6 +21,14 @@ export function ProfilePage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+
+  const onLogout = async () => {
+    if (token) {
+      await deleteSession(token).catch(() => undefined);
+    }
+    setToken(null);
+    navigate('/login');
+  };
 
   useEffect(() => {
     setForm({
@@ -137,6 +146,13 @@ export function ProfilePage() {
         />
         <button type="submit">Сохранить изменения</button>
       </form>
+
+      <button
+        style={{ background: 'red', color: 'white', marginTop: 24 }}
+        onClick={onLogout}
+      >
+        Выйти
+      </button>
 
       {saved && <p>{saved}</p>}
       {error && <p className="error-text">{error}</p>}

@@ -1,8 +1,15 @@
 import { apiRequest } from './apiClient';
 
-export function listCourses(token: string, query?: string) {
-  const suffix = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
-  return apiRequest<Array<any>>(`/courses${suffix}`, {}, token);
+export function listCourses(token: string, query?: string, page = 1, limit = 20) {
+  const params = new URLSearchParams();
+  if (query?.trim()) params.set('q', query.trim());
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+  return apiRequest<{ items: Array<any>; total: number; page: number; pageSize: number }>(
+    `/courses?${params.toString()}`,
+    {},
+    token,
+  );
 }
 
 export function createCourse(token: string, payload: { title: string; description?: string }) {
@@ -57,4 +64,12 @@ export function addGroupMember(token: string, groupId: string, userId: string) {
 
 export function removeGroupMember(token: string, groupId: string, userId: string) {
   return apiRequest<any>(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' }, token);
+}
+
+export function deleteCourse(token: string, courseId: string) {
+  return apiRequest<any>(`/courses/${courseId}`, { method: 'DELETE' }, token);
+}
+
+export function leaveCourse(token: string, courseId: string) {
+  return apiRequest<any>(`/courses/${courseId}/leave`, { method: 'DELETE' }, token);
 }

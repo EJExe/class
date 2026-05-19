@@ -4,7 +4,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { useAuth } from '../hooks/useAuth';
 import { downloadFile } from '../services/apiClient';
 import { createChannel, listChannels } from '../services/channels.api';
-import { getCourse, listGroups } from '../services/courses.api';
+import { deleteCourse, getCourse, leaveCourse, listGroups } from '../services/courses.api';
 import {
   addMessageReaction,
   deleteMessage,
@@ -59,6 +59,10 @@ export function CoursePage() {
     assignmentDeadlineAt: '',
     groupIds: [] as string[],
   });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
 
   const myRole = course?.currentUserRole ?? '';
   const isManager = ['admin', 'teacher'].includes(myRole);
@@ -119,6 +123,17 @@ export function CoursePage() {
   useEffect(() => {
     void loadCourse();
   }, [token, courseId]);
+
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isSettingsOpen]);
 
   const loadMessages = async (reset = true) => {
     if (!token || !activeChannelId) return;
@@ -218,7 +233,12 @@ export function CoursePage() {
     const normalized = mentionQuery.trim().toLowerCase();
     return availableMentionMembers
       .filter((member: any) => member.id !== user?.id)
-      .filter((member: any) => (normalized ? member.nickname.toLowerCase().includes(normalized) : true))
+      .filter((member: any) =>
+        normalized
+          ? member.nickname.toLowerCase().includes(normalized) ||
+            (member.fullName ?? '').toLowerCase().includes(normalized)
+          : true,
+      )
       .sort((a: any, b: any) => a.nickname.localeCompare(b.nickname, 'ru'));
   }, [availableMentionMembers, mentionQuery, user?.id]);
 
@@ -363,20 +383,70 @@ export function CoursePage() {
     });
   };
 
+  const handleLeaveCourse = async () => {
+    if (!window.confirm('Вы уверены, что хотите покинуть курс?')) return;
+    if (!token) return;
+    setIsLeaving(true);
+    setIsSettingsOpen(false);
+    try {
+      await leaveCourse(token, courseId);
+      navigate('/courses');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!window.confirm('Вы уверены, что хотите удалить курс? Это действие нельзя отменить.')) return;
+    if (!token) return;
+    setIsDeleting(true);
+    setIsSettingsOpen(false);
+    try {
+      await deleteCourse(token, courseId);
+      navigate('/courses');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="page col">
       <div className="toolbar">
         <div>
-          <h1>{course?.title ?? 'Курс'}</h1>
+          <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+            <h1>{course?.title ?? 'Курс'}</h1>
+            <div className="dropdown-container" ref={settingsRef}>
+              <button className="icon-ghost-button icon-ghost-accent" onClick={() => setIsSettingsOpen(!isSettingsOpen)} title="Настройки курса">
+                {'⚙'}
+              </button>
+              {isSettingsOpen && (
+                <div className="dropdown-menu">
+                  <Link to={`/courses/${courseId}/members`} className="dropdown-item" onClick={() => setIsSettingsOpen(false)}>Участники</Link>
+                  {isManager && <Link to={`/courses/${courseId}/groups`} className="dropdown-item" onClick={() => setIsSettingsOpen(false)}>Группы</Link>}
+                  {isManager && <Link to={`/courses/${courseId}/gradebook`} className="dropdown-item" onClick={() => setIsSettingsOpen(false)}>{'Ведомость'}</Link>}
+                  {isManager && <Link to={`/courses/${courseId}/assignments/trash`} className="dropdown-item" onClick={() => setIsSettingsOpen(false)}>{'Корзина'}</Link>}
+                  <div className="dropdown-divider" />
+                  <button className="dropdown-item dropdown-item-danger" onClick={handleLeaveCourse} disabled={isLeaving}>
+                    {isLeaving ? 'Выход...' : 'Выйти из курса'}
+                  </button>
+                  {isManager && (
+                    <button className="dropdown-item dropdown-item-danger" onClick={handleDeleteCourse} disabled={isDeleting}>
+                      {isDeleting ? 'Удаление...' : 'Удалить курс'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           <p className="muted">{course?.description ?? 'Пространство курса'}</p>
           <p className="muted">Код приглашения: {course?.inviteCode}</p>
         </div>
         <div className="row">
           <Link to="/courses">Все курсы</Link>
-          <Link to={`/courses/${courseId}/members`}>Участники</Link>
-          {isManager && <Link to={`/courses/${courseId}/groups`}>Группы</Link>}
-          {isManager && <Link to={`/courses/${courseId}/gradebook`}>{'\u0412\u0435\u0434\u043e\u043c\u043e\u0441\u0442\u044c'}</Link>}
-          {isManager && <Link to={`/courses/${courseId}/assignments/trash`}>{'\u041a\u043e\u0440\u0437\u0438\u043d\u0430'}</Link>}
           {token && isAdmin && (
             <>
               <button className="secondary" onClick={() => void downloadFile(`/courses/${courseId}/export`, token, 'course.csv')}>
@@ -487,7 +557,8 @@ export function CoursePage() {
                       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="row" style={{ gap: 8, alignItems: 'center' }}>
                           <UserAvatar user={message.author} size={30} />
-                          <strong>{message.author?.nickname ?? 'Пользователь'}</strong>
+                          <strong>{message.author?.fullName || message.author?.nickname || 'Пользователь'}</strong>
+                          {message.author?.fullName && <span className="muted" style={{fontSize: 13}}> @{message.author.nickname}</span>}
                         </span>
                         <div className="row" style={{ gap: 8 }}>
                           {canEdit && (
@@ -652,6 +723,7 @@ export function CoursePage() {
                           }}
                         >
                           @{member.nickname}
+                          {member.fullName && <span className="muted" style={{fontSize: 13}}> — {member.fullName}</span>}
                         </li>
                       ))}
                     </ul>

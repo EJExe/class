@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { VideoService } from './video.service';
@@ -17,5 +17,13 @@ export class VideoController {
   getParticipants(@CurrentUser() user: { id: string }, @Param('id') roomId: string) {
     return this.videoService.getRoomParticipants(user.id, roomId);
   }
-}
 
+  @Delete('video-rooms/:id/participants/:userId')
+  kickParticipant(
+    @CurrentUser() user: { id: string },
+    @Param('id') roomId: string,
+    @Param('userId') targetUserId: string,
+  ) {
+    return this.videoService.kickParticipant(user.id, roomId, targetUserId);
+  }
+}

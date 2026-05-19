@@ -1,9 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { CourseRole, NotificationType } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../common/access.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { StorageService } from '../storage/storage.service';
 
 const REVIEW_ROLES = [CourseRole.admin, CourseRole.teacher, CourseRole.assistant];
@@ -16,6 +17,8 @@ export class MessagesService {
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
+    @Inject(forwardRef(() => RealtimeGateway))
+    private readonly realtimeGateway: RealtimeGateway,
   ) {}
 
   private getAdminNickname() {
@@ -181,7 +184,20 @@ export class MessagesService {
 
     await this.notifyChannelUsers(channel, message);
 
-    return this.decorateMessage(message);
+    // Mark channel as read for the author so their own message doesn't show as unread after reload
+    await this.prisma.channelReadState.upsert({
+      where: { channelId_userId: { channelId, userId } },
+      update: { lastReadAt: new Date() },
+      create: { channelId, userId },
+    });
+
+    const decorated = this.decorateMessage(message);
+    this.realtimeGateway.server.to(`chat:${channelId}`).emit('chat:message:new', {
+      channelId,
+      message: decorated,
+    });
+
+    return decorated;
   }
 
   async softDeleteMessage(userId: string, messageId: string) {
@@ -218,6 +234,12 @@ export class MessagesService {
         deletedOwnMessage: message.authorUserId === userId,
         deletedByRole: membership.role,
       },
+    });
+
+    this.realtimeGateway.server.to(`chat:${message.channelId}`).emit('chat:message:deleted', {
+      channelId: message.channelId,
+      messageId: updated.id,
+      deletedAt: updated.deletedAt,
     });
 
     return {
@@ -267,7 +289,14 @@ export class MessagesService {
       },
     });
 
-    return this.decorateMessage(updated);
+    const decorated = this.decorateMessage(updated);
+
+    this.realtimeGateway.server.to(`chat:${message.channelId}`).emit('chat:message:updated', {
+      channelId: message.channelId,
+      message: decorated,
+    });
+
+    return decorated;
   }
 
   async getMessageFile(userId: string, fileId: string) {

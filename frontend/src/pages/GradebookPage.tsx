@@ -19,15 +19,23 @@ export function GradebookPage() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  useEffect(() => {
     if (!token || !courseId) return;
-    const [courseData, groupsData, gradebookData] = await Promise.all([
+    Promise.all([
       getCourse(token, courseId),
       listGroups(token, courseId),
-      getGradebook(token, courseId, groupId || undefined),
-    ]);
-    setCourse(courseData);
-    setGroups(groupsData);
+    ]).then(([courseData, groupsData]) => {
+      setCourse(courseData);
+      setGroups(groupsData);
+      if (!groupId && groupsData.length > 0) {
+        setGroupId(groupsData[0].id);
+      }
+    });
+  }, [token, courseId]);
+
+  const load = async () => {
+    if (!token || !courseId || !groupId) return;
+    const gradebookData = await getGradebook(token, courseId, groupId);
     setGradebook(gradebookData);
     const nextDrafts: Record<string, { grade: string; teacherComment: string; status: string }> = {};
     for (const row of gradebookData.rows ?? []) {
@@ -102,7 +110,6 @@ export function GradebookPage() {
         <div className="row">
           <Link to={`/courses/${courseId}`}>Назад к курсу</Link>
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-            <option value="">Все группы</option>
             {groups.map((group) => (
               <option key={group.id} value={group.id}>
                 {group.name}
@@ -119,7 +126,7 @@ export function GradebookPage() {
               className="secondary"
               onClick={() =>
                 void downloadFile(
-                  `/courses/${courseId}/gradebook/export?format=${format}${groupId ? `&groupId=${encodeURIComponent(groupId)}` : ''}`,
+                  `/courses/${courseId}/gradebook/export?format=${format}&groupId=${encodeURIComponent(groupId)}`,
                   token,
                   `gradebook.${format}`,
                 )
@@ -131,6 +138,13 @@ export function GradebookPage() {
         </div>
       </div>
 
+      {groups.length === 0 && (
+        <div className="panel col" style={{ alignItems: 'center', padding: 40 }}>
+          <p className="muted">В курсе нет групп. Создайте группу для просмотра ведомости.</p>
+        </div>
+      )}
+
+      {gradebook && groups.length > 0 && (
       <div className="panel col" style={{ overflowX: 'auto' }}>
         <table className="gradebook-table">
           <thead>
@@ -198,6 +212,7 @@ export function GradebookPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {error && <p className="error-text">{error}</p>}
     </div>

@@ -310,7 +310,9 @@ export class AssignmentsService {
     const assignment = await this.prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
-        channel: true,
+        channel: {
+          include: { groupAccess: true },
+        },
       },
     });
     if (!assignment) {
@@ -320,20 +322,26 @@ export class AssignmentsService {
     await this.access.assertCourseReviewer(assignment.channel.courseId, userId);
     const normalized = query?.trim();
 
+    const allowedGroupIds = (assignment.channel.groupAccess ?? []).map((ga) => ga.groupId);
+
+    const userFilter: any = {};
+    if (allowedGroupIds.length > 0) {
+      userFilter.courseGroupMemberships = {
+        some: { groupId: { in: allowedGroupIds } },
+      };
+    }
+    if (normalized) {
+      userFilter.OR = [
+        { nickname: { contains: normalized, mode: 'insensitive' } },
+        { fullName: { contains: normalized, mode: 'insensitive' } },
+      ];
+    }
+
     const members = await this.prisma.courseMember.findMany({
       where: {
         courseId: assignment.channel.courseId,
         role: CourseRole.student,
-        ...(normalized
-          ? {
-              user: {
-                OR: [
-                  { nickname: { contains: normalized, mode: 'insensitive' } },
-                  { fullName: { contains: normalized, mode: 'insensitive' } },
-                ],
-              },
-            }
-          : {}),
+        ...(Object.keys(userFilter).length > 0 ? { user: userFilter } : {}),
       },
       include: {
         user: {
@@ -360,6 +368,10 @@ export class AssignmentsService {
     }
 
     await this.access.assertCourseManager(assignment.channel.courseId, userId);
+
+    if (assignment.status === AssignmentStatus.archived) {
+      throw new BadRequestException('Cannot edit an archived assignment');
+    }
 
     const updated = await this.prisma.assignment.update({
       where: { id: assignmentId },
@@ -575,6 +587,10 @@ export class AssignmentsService {
       throw new ForbiddenException('Only students can upload submissions');
     }
 
+    if (assignment.status === AssignmentStatus.closed || assignment.status === AssignmentStatus.archived) {
+      throw new BadRequestException('Cannot upload to a closed or archived assignment');
+    }
+
     const stored = await this.storage.saveFile('submission-files', file);
     const now = new Date();
 
@@ -663,6 +679,11 @@ export class AssignmentsService {
 
   async submitSubmission(userId: string, assignmentId: string) {
     const assignment = await this.access.getAssignmentAccessible(assignmentId, userId);
+
+    if (assignment.status !== AssignmentStatus.active) {
+      throw new BadRequestException('Can only submit to an active assignment');
+    }
+
     const submission = await this.prisma.submission.findUnique({
       where: {
         assignmentId_studentUserId: {
@@ -871,6 +892,73 @@ export class AssignmentsService {
     return file;
   }
 
+  async deleteSubmissionFile(userId: string, fileId: string) {
+    const file = await this.prisma.submissionFile.findUnique({
+      where: { id: fileId },
+      include: {
+        submission: {
+          include: {
+            assignment: {
+              include: {
+                channel: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!file) {
+      throw new NotFoundException('Submission file not found');
+    }
+
+    const membership = await this.access.assertCourseMember(
+      file.submission.assignment.channel.courseId,
+      userId,
+    );
+
+    if (membership.role === CourseRole.student && file.submission.studentUserId !== userId) {
+      throw new ForbiddenException('Cannot delete another student submission file');
+    }
+
+    if (file.submission.status !== SubmissionStatus.draft && file.submission.status !== SubmissionStatus.not_submitted) {
+      throw new BadRequestException('Cannot delete files after submission has been sent for review');
+    }
+
+    const isCurrentFile = file.submission.currentFileId === fileId;
+
+    await this.prisma.submissionFile.delete({ where: { id: fileId } });
+    await this.storage.remove(file.path);
+
+    if (isCurrentFile) {
+      const nextFile = await this.prisma.submissionFile.findFirst({
+        where: { submissionId: file.submissionId },
+        orderBy: { uploadedAt: 'desc' },
+      });
+
+      await this.prisma.submission.update({
+        where: { id: file.submissionId },
+        data: {
+          currentFileId: nextFile?.id ?? null,
+          ...(nextFile ? {} : { status: SubmissionStatus.not_submitted }),
+        },
+      });
+    }
+
+    await this.audit.log({
+      actorUserId: userId,
+      actionType: 'submission.file_deleted',
+      entityType: 'submission-file',
+      entityId: fileId,
+      metadata: {
+        submissionId: file.submissionId,
+        originalName: file.originalName,
+      },
+    });
+
+    return { ok: true };
+  }
+
   async addSubmissionFileComment(userId: string, fileId: string, dto: CreateSubmissionFileCommentDto) {
     const file = await this.prisma.submissionFile.findUnique({
       where: { id: fileId },
@@ -980,6 +1068,27 @@ export class AssignmentsService {
         },
       },
     });
+
+    if (dto.teacherComment?.trim() && submission.currentFileId) {
+      await this.prisma.submissionFileComment.create({
+        data: {
+          fileId: submission.currentFileId,
+          authorUserId: userId,
+          content: dto.teacherComment.trim(),
+        },
+      });
+
+      await this.audit.log({
+        actorUserId: userId,
+        actionType: 'submission.file_comment_created',
+        entityType: 'submission-file',
+        entityId: submission.currentFileId,
+        metadata: {
+          submissionId,
+          contentPreview: dto.teacherComment.trim().slice(0, 140),
+        },
+      });
+    }
 
     await this.prisma.submissionActivityLog.create({
       data: {
@@ -1403,7 +1512,17 @@ export class AssignmentsService {
       this.prisma.assignment.findMany({
         where: {
           deletedAt: null,
-          channel: { courseId },
+          channel: {
+            courseId,
+            ...(groupId
+              ? {
+                  OR: [
+                    { groupAccess: { none: {} } },
+                    { groupAccess: { some: { groupId } } },
+                  ],
+                }
+              : {}),
+          },
         },
         select: {
           id: true,

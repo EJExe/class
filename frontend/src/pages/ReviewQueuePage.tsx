@@ -14,7 +14,7 @@ export function ReviewQueuePage() {
 
   useEffect(() => {
     if (!token) return;
-    void listCourses(token).then(setCourses);
+    void listCourses(token).then((data) => setCourses(data.items));
   }, [token]);
 
   useEffect(() => {

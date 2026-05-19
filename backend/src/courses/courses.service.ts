@@ -136,73 +136,88 @@ export class CoursesService {
     return course;
   }
 
-  async getUserCourses(userId: string, query?: string) {
-    const memberships = await this.prisma.courseMember.findMany({
-      where: {
-        userId,
-        ...(query
-          ? {
-              course: {
-                OR: [
-                  { title: { contains: query, mode: 'insensitive' } },
-                  { description: { contains: query, mode: 'insensitive' } },
-                ],
-              },
-            }
-          : {}),
-      },
-      include: {
-        course: {
-          include: {
-            channels: {
-              include: {
-                readStates: {
-                  where: { userId },
-                  take: 1,
-                },
-                messages: {
-                  where: { deletedAt: null },
-                  orderBy: { createdAt: 'desc' },
-                  take: 1,
-                  select: { createdAt: true },
-                },
-                assignment: {
-                  include: {
-                    readStates: {
-                      where: { userId },
-                      take: 1,
-                    },
-                    submissions: {
-                      select: {
-                        studentUserId: true,
-                        updatedAt: true,
-                        submittedAt: true,
+  async getUserCourses(userId: string, query?: string, page = 1, limit = 20) {
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const skip = Math.max(page - 1, 0) * safeLimit;
+
+    const where: any = {
+      userId,
+      ...(query
+        ? {
+            course: {
+              OR: [
+                { title: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+          }
+        : {}),
+    };
+
+    const [memberships, total] = await Promise.all([
+      this.prisma.courseMember.findMany({
+        where,
+        include: {
+          course: {
+            include: {
+              channels: {
+                include: {
+                  readStates: {
+                    where: { userId },
+                    take: 1,
+                  },
+                  messages: {
+                    where: { deletedAt: null },
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: { createdAt: true },
+                  },
+                  assignment: {
+                    include: {
+                      readStates: {
+                        where: { userId },
+                        take: 1,
                       },
-                      orderBy: [{ submittedAt: 'desc' }, { updatedAt: 'desc' }],
-                      take: 20,
+                      submissions: {
+                        select: {
+                          studentUserId: true,
+                          updatedAt: true,
+                          submittedAt: true,
+                        },
+                        orderBy: [{ submittedAt: 'desc' }, { updatedAt: 'desc' }],
+                        take: 20,
+                      },
                     },
                   },
                 },
               },
+              groups: true,
             },
-            groups: true,
           },
         },
-      },
-      orderBy: { joinedAt: 'desc' },
-    });
+        orderBy: { joinedAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+      this.prisma.courseMember.count({ where }),
+    ]);
 
-    return memberships.map((membership) => ({
-      id: membership.course.id,
-      title: membership.course.title,
-      description: membership.course.description,
-      inviteCode: membership.course.inviteCode,
-      role: membership.role,
-      channelsCount: membership.course.channels.length,
-      groupsCount: membership.course.groups.length,
-      joinedAt: membership.joinedAt,
-      hasUnread: this.computeCourseHasUnread(membership),
-    }));
+    return {
+      items: memberships.map((membership) => ({
+        id: membership.course.id,
+        title: membership.course.title,
+        description: membership.course.description,
+        inviteCode: membership.course.inviteCode,
+        role: membership.role,
+        channelsCount: membership.course.channels.length,
+        groupsCount: membership.course.groups.length,
+        joinedAt: membership.joinedAt,
+        hasUnread: this.computeCourseHasUnread(membership),
+      })),
+      total,
+      page,
+      pageSize: safeLimit,
+    };
   }
 
   async exportCourseCsv(userId: string, courseId: string) {
@@ -239,17 +254,17 @@ export class CoursesService {
 
     const esc = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const rows: string[] = [];
-    rows.push(['Курс', 'Описание'].map(esc).join(','));
+    rows.push(['пїЅпїЅпїЅпїЅ', 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'].map(esc).join(','));
     rows.push([course.title, course.description ?? ''].map(esc).join(','));
     rows.push('');
-    rows.push(['Участник', 'ФИО', 'Email', 'Роль'].map(esc).join(','));
+    rows.push(['пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', 'пїЅпїЅпїЅ', 'Email', 'пїЅпїЅпїЅпїЅ'].map(esc).join(','));
     for (const member of course.members) {
       rows.push(
         [member.user.nickname, member.user.fullName ?? '', member.user.email ?? '', member.role].map(esc).join(','),
       );
     }
     rows.push('');
-    rows.push(['Канал', 'Тип', 'Связанное задание', 'Дедлайн'].map(esc).join(','));
+    rows.push(['пїЅпїЅпїЅпїЅпїЅ', 'пїЅпїЅпїЅ', 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ'].map(esc).join(','));
     for (const channel of course.channels) {
       rows.push(
         [
@@ -324,7 +339,7 @@ export class CoursesService {
   async joinByInviteCode(userId: string, inviteCode: string) {
     const course = await this.prisma.course.findUnique({ where: { inviteCode } });
     if (!course) {
-      throw new NotFoundException('Course with invite code not found');
+      throw new NotFoundException('РљСѓСЂСЃ СЃ СѓРєР°Р·Р°РЅРЅС‹Рј РєРѕРґРѕРј РЅРµ РЅР°Р№РґРµРЅ');
     }
 
     const memberRole = (await this.isAdminAccount(userId)) ? CourseRole.admin : CourseRole.student;
@@ -338,7 +353,7 @@ export class CoursesService {
         },
       });
     } catch {
-      throw new ConflictException('Already joined');
+      throw new ConflictException('Р’С‹ СѓР¶Рµ СЃРѕСЃС‚РѕРёС‚Рµ РІ СЌС‚РѕРј РєСѓСЂСЃРµ');
     }
 
     await this.audit.log({
@@ -426,10 +441,10 @@ export class CoursesService {
     await this.access.assertCourseMember(courseId, userId);
 
     return [
-      ...(isAdmin ? [{ value: CourseRole.admin, label: 'Администратор' }] : []),
-      { value: CourseRole.teacher, label: 'Преподаватель' },
-      { value: CourseRole.assistant, label: 'Ассистент' },
-      { value: CourseRole.student, label: 'Студент' },
+      ...(isAdmin ? [{ value: CourseRole.admin, label: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' }] : []),
+      { value: CourseRole.teacher, label: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' },
+      { value: CourseRole.assistant, label: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ' },
+      { value: CourseRole.student, label: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' },
     ];
   }
 
@@ -526,6 +541,48 @@ export class CoursesService {
       entityType: 'group',
       entityId: groupId,
       metadata: { userId },
+    });
+
+    return { ok: true };
+  }
+
+  async deleteCourse(userId: string, courseId: string) {
+    await this.access.assertCourseManager(courseId, userId);
+
+    const course = await this.prisma.course.delete({
+      where: { id: courseId },
+    });
+
+    await this.audit.log({
+      actorUserId: userId,
+      actionType: 'course.deleted',
+      entityType: 'course',
+      entityId: courseId,
+      metadata: { title: course.title },
+    });
+
+    return { ok: true };
+  }
+
+  async leaveCourse(userId: string, courseId: string) {
+    await this.access.assertCourseMember(courseId, userId);
+
+    await this.prisma.courseGroupMember.deleteMany({
+      where: {
+        userId,
+        group: { courseId },
+      },
+    });
+
+    await this.prisma.courseMember.delete({
+      where: { courseId_userId: { courseId, userId } },
+    });
+
+    await this.audit.log({
+      actorUserId: userId,
+      actionType: 'course.left',
+      entityType: 'course',
+      entityId: courseId,
     });
 
     return { ok: true };

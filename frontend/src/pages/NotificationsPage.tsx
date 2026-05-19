@@ -67,8 +67,13 @@ export function NotificationsPage() {
       </div>
 
       <div className="panel col">
-        {items.map((item) => (
-          <div key={item.id} className="card-row">
+        {items.map((item) => {
+          const importantTypes = ['submission_submitted', 'submission_graded', 'assignment_created'];
+          const isMention = item.type === 'assignment_message' && item.title?.includes('отметили');
+          const isImportant = importantTypes.includes(item.type) || isMention;
+
+          return (
+          <div key={item.id} className={`card-row${isImportant ? ' notification-important' : ''}`}>
             <div>
               <strong>{item.title}</strong>
               <div style={{ whiteSpace: 'pre-wrap' }}>{item.body}</div>
@@ -80,7 +85,8 @@ export function NotificationsPage() {
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
         {nextCursor && (
           <button className="secondary" onClick={() => void load(nextCursor)}>
             Показать еще

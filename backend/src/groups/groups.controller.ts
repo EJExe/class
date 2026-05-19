@@ -1,15 +1,19 @@
 import { Body, Controller, Delete, Param, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { CoursesService } from '../courses/courses.service';
 import { AddGroupMemberDto } from './dto/add-group-member.dto';
 
+@ApiTags('Groups')
+@ApiBearerAuth()
 @Controller('groups')
 @UseGuards(SessionAuthGuard)
 export class GroupsController {
   constructor(private readonly coursesService: CoursesService) {}
 
   @Post(':id/members')
+  @ApiOperation({ summary: 'Добавить пользователя в группу' })
   addMember(
     @CurrentUser() user: { id: string },
     @Param('id') groupId: string,
@@ -19,6 +23,7 @@ export class GroupsController {
   }
 
   @Delete(':id/members/:userId')
+  @ApiOperation({ summary: 'Удалить пользователя из группы' })
   removeMember(
     @CurrentUser() user: { id: string },
     @Param('id') groupId: string,

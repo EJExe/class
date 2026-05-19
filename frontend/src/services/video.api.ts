@@ -8,3 +8,6 @@ export function getVideoParticipants(token: string, roomId: string) {
   return apiRequest<Array<any>>(`/video-rooms/${roomId}/participants`, {}, token);
 }
 
+export function kickVideoParticipant(token: string, roomId: string, userId: string) {
+  return apiRequest<any>(`/video-rooms/${roomId}/participants/${userId}`, { method: 'DELETE' }, token);
+}

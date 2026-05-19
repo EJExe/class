@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolve } from 'path';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { AssignmentsService } from './assignments.service';
@@ -25,6 +26,8 @@ import { UpdateAssignmentDto } from './dto/update-assignment.dto';
 import { UpdatePrivateMessageDto } from './dto/update-private-message.dto';
 import { UpdateSubmissionStatusDto } from './dto/update-submission-status.dto';
 
+@ApiTags('Assignments')
+@ApiBearerAuth()
 @Controller()
 @UseGuards(SessionAuthGuard)
 export class AssignmentsController {
@@ -41,6 +44,7 @@ export class AssignmentsController {
   }
 
   @Post('channels/:id/assignments')
+  @ApiOperation({ summary: 'Создать задание в канале типа assignment' })
   createAssignment(
     @CurrentUser() user: { id: string },
     @Param('id') channelId: string,
@@ -50,16 +54,19 @@ export class AssignmentsController {
   }
 
   @Get('channels/:id/assignments')
+  @ApiOperation({ summary: 'Список заданий канала' })
   listByChannel(@CurrentUser() user: { id: string }, @Param('id') channelId: string) {
     return this.assignmentsService.listByChannel(user.id, channelId);
   }
 
   @Get('assignments/:id')
+  @ApiOperation({ summary: 'Детали задания' })
   getAssignment(@CurrentUser() user: { id: string }, @Param('id') assignmentId: string) {
     return this.assignmentsService.getAssignment(user.id, assignmentId);
   }
 
   @Patch('assignments/:id/read')
+  @ApiOperation({ summary: 'Отметить задание прочитанным' })
   markAssignmentRead(@CurrentUser() user: { id: string }, @Param('id') assignmentId: string) {
     return this.assignmentsService.markAssignmentRead(user.id, assignmentId);
   }
@@ -74,6 +81,7 @@ export class AssignmentsController {
   }
 
   @Patch('assignments/:id')
+  @ApiOperation({ summary: 'Обновить задание' })
   updateAssignment(
     @CurrentUser() user: { id: string },
     @Param('id') assignmentId: string,
@@ -83,11 +91,13 @@ export class AssignmentsController {
   }
 
   @Delete('assignments/:id')
+  @ApiOperation({ summary: 'Отправить задание в корзину' })
   trashAssignment(@CurrentUser() user: { id: string }, @Param('id') assignmentId: string) {
     return this.assignmentsService.trashAssignment(user.id, assignmentId);
   }
 
   @Patch('assignments/:id/restore')
+  @ApiOperation({ summary: 'Восстановить задание из корзины' })
   restoreAssignment(@CurrentUser() user: { id: string }, @Param('id') assignmentId: string) {
     return this.assignmentsService.restoreAssignment(user.id, assignmentId);
   }
@@ -98,6 +108,7 @@ export class AssignmentsController {
   }
 
   @Get('courses/:id/gradebook')
+  @ApiOperation({ summary: 'Журнал оценок курса' })
   getGradebook(
     @CurrentUser() user: { id: string },
     @Param('id') courseId: string,
@@ -151,6 +162,7 @@ export class AssignmentsController {
   }
 
   @Patch('assignments/:id/status')
+  @ApiOperation({ summary: 'Изменить статус задания (draft→active→closed→archived)' })
   updateAssignmentStatus(
     @CurrentUser() user: { id: string },
     @Param('id') assignmentId: string,
@@ -192,6 +204,8 @@ export class AssignmentsController {
 
   @Post('assignments/:id/submissions/upload')
   @UseInterceptors(FilesInterceptor('files', 20))
+  @ApiOperation({ summary: 'Загрузить файлы сдачи (черновик)' })
+  @ApiConsumes('multipart/form-data')
   uploadSubmission(
     @CurrentUser() user: { id: string },
     @Param('id') assignmentId: string,
@@ -201,11 +215,13 @@ export class AssignmentsController {
   }
 
   @Post('assignments/:id/submissions/submit')
+  @ApiOperation({ summary: 'Отправить сдачу на проверку (после upload)' })
   submitSubmission(@CurrentUser() user: { id: string }, @Param('id') assignmentId: string) {
     return this.assignmentsService.submitSubmission(user.id, assignmentId);
   }
 
   @Get('assignments/:id/submissions')
+  @ApiOperation({ summary: 'Список сдач задания (для преподавателя)' })
   listSubmissions(
     @CurrentUser() user: { id: string },
     @Param('id') assignmentId: string,
@@ -217,6 +233,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:id/my-submission')
+  @ApiOperation({ summary: 'Моя сдача по заданию (для студента)' })
   getMySubmission(@CurrentUser() user: { id: string }, @Param('id') assignmentId: string) {
     return this.assignmentsService.getMySubmission(user.id, assignmentId);
   }
@@ -224,6 +241,12 @@ export class AssignmentsController {
   @Get('submissions/:id')
   getSubmission(@CurrentUser() user: { id: string }, @Param('id') submissionId: string) {
     return this.assignmentsService.getSubmission(user.id, submissionId);
+  }
+
+  @Delete('submission-files/:id')
+  @ApiOperation({ summary: 'Удалить файл сдачи (только в статусе черновика)' })
+  deleteSubmissionFile(@CurrentUser() user: { id: string }, @Param('id') fileId: string) {
+    return this.assignmentsService.deleteSubmissionFile(user.id, fileId);
   }
 
   @Get('submission-files/:id/download')
@@ -247,6 +270,7 @@ export class AssignmentsController {
   }
 
   @Patch('submissions/:id/status')
+  @ApiOperation({ summary: 'Обновить статус сдачи' })
   updateSubmissionStatus(
     @CurrentUser() user: { id: string },
     @Param('id') submissionId: string,
@@ -256,6 +280,7 @@ export class AssignmentsController {
   }
 
   @Patch('submissions/:id/grade')
+  @ApiOperation({ summary: 'Выставить оценку за сдачу' })
   gradeSubmission(
     @CurrentUser() user: { id: string },
     @Param('id') submissionId: string,
@@ -265,6 +290,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:id/private-chat')
+  @ApiOperation({ summary: 'Приватный чат студент-преподаватель по заданию' })
   getPrivateChat(
     @CurrentUser() user: { id: string },
     @Param('id') assignmentId: string,
@@ -274,11 +300,13 @@ export class AssignmentsController {
   }
 
   @Get('private-chats/:id/messages')
+  @ApiOperation({ summary: 'Сообщения приватного чата' })
   listPrivateMessages(@CurrentUser() user: { id: string }, @Param('id') chatId: string) {
     return this.assignmentsService.listPrivateChatMessages(user.id, chatId);
   }
 
   @Post('private-chats/:id/messages')
+  @ApiOperation({ summary: 'Отправить сообщение в приватный чат' })
   createPrivateMessage(
     @CurrentUser() user: { id: string },
     @Param('id') chatId: string,
@@ -307,6 +335,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments-deadlines')
+  @ApiOperation({ summary: 'Список дедлайнов (мои / по курсу)' })
   listDeadlines(
     @CurrentUser() user: { id: string },
     @Query('scope') scope = 'my',
@@ -386,6 +415,7 @@ export class AssignmentsController {
   }
 
   @Get('review-queue')
+  @ApiOperation({ summary: 'Очередь проверки для преподавателя' })
   listReviewQueue(@CurrentUser() user: { id: string }, @Query('courseId') courseId?: string) {
     return this.assignmentsService.listReviewQueue(user.id, courseId);
   }

@@ -15,6 +15,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../common/access.service';
 import { MessagesService } from '../messages/messages.service';
 import { NotificationHubService } from '../notifications/notification-hub.service';
+import { CourseRole } from '@prisma/client';
+
+const MANAGE_ROLES: CourseRole[] = [CourseRole.admin, CourseRole.teacher];
 
 type AuthedSocket = Socket & {
   data: {
@@ -70,6 +73,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       await this.leaveVideoRoom(client, roomId);
     }
   }
+
+  // ── Private chat ──────────────────────────────────────────
 
   @SubscribeMessage('private-chat:join')
   async onPrivateChatJoin(
@@ -131,6 +136,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 
+  // ── Course chat ──────────────────────────────────────────
+
   @SubscribeMessage('chat:join')
   async onChatJoin(
     @ConnectedSocket() client: AuthedSocket,
@@ -157,17 +164,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() payload: { channelId: string; content: string },
   ) {
     const userId = await this.ensureSocketUser(client);
-
-    const message = await this.messagesService.createMessage(userId, payload.channelId, payload.content);
-
-    this.server.to(`chat:${payload.channelId}`).emit('chat:message:new', {
-      channelId: payload.channelId,
-      message,
-    });
-    client.emit('chat:message:new', {
-      channelId: payload.channelId,
-      message,
-    });
+    await this.messagesService.createMessage(userId, payload.channelId, payload.content);
   }
 
   @SubscribeMessage('chat:message:update')
@@ -176,27 +173,20 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() payload: { channelId: string; messageId: string; content: string },
   ) {
     const userId = await this.ensureSocketUser(client);
-    const message = await this.messagesService.updateMessage(userId, payload.messageId, payload.content);
-    this.server.to(`chat:${payload.channelId}`).emit('chat:message:updated', {
-      channelId: payload.channelId,
-      message,
-    });
+    await this.messagesService.updateMessage(userId, payload.messageId, payload.content);
   }
 
-  
   @SubscribeMessage('chat:message:delete')
   async onChatMessageDelete(
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() payload: { messageId: string; channelId: string },
   ) {
     const userId = await this.ensureSocketUser(client);
-    const deleted = await this.messagesService.softDeleteMessage(userId, payload.messageId);
-    this.server.to(`chat:${payload.channelId}`).emit('chat:message:deleted', {
-      channelId: payload.channelId,
-      messageId: deleted.id,
-      deletedAt: deleted.deletedAt,
-    });
+    await this.messagesService.softDeleteMessage(userId, payload.messageId);
   }
+
+  // ── Video room: core ─────────────────────────────────────
+
   @SubscribeMessage('room:join')
   async onRoomJoin(
     @ConnectedSocket() client: AuthedSocket,
@@ -206,7 +196,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     const room = await this.prisma.videoRoom.findUnique({ where: { id: payload.roomId } });
     if (!room) {
-      client.emit('room:error', { message: 'Room not found' });
+      client.emit('room:error', { message: 'Комната не найдена' });
       return;
     }
 
@@ -231,7 +221,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
 
     if (activeCount >= room.maxParticipants) {
-      client.emit('room:error', { message: 'Room is full' });
+      client.emit('room:error', { message: 'Комната заполнена' });
       return;
     }
 
@@ -258,21 +248,23 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           select: {
             id: true,
             nickname: true,
+            fullName: true,
           },
         },
       },
+    });
+
+    const membership = await this.prisma.courseMember.findUnique({
+      where: { courseId_userId: { courseId: room.courseId, userId } },
     });
 
     client.emit('room:joined', {
       roomId: payload.roomId,
       peerId,
       participants,
+      role: membership?.role ?? 'student',
     });
     this.server.to(`room:${payload.roomId}`).emit('room:participants', {
-      roomId: payload.roomId,
-      participants,
-    });
-    client.emit('room:participants', {
       roomId: payload.roomId,
       participants,
     });
@@ -285,6 +277,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     await this.leaveVideoRoom(client, payload.roomId);
   }
+
+  // ── Video room: signalling ───────────────────────────────
 
   @SubscribeMessage('webrtc:offer')
   async onOffer(
@@ -327,6 +321,178 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       candidate: payload.candidate,
     });
   }
+
+  // ── Video room: raise hand ──────────────────────────────
+
+  @SubscribeMessage('room:raise-hand')
+  async onRaiseHand(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    this.server.to(`room:${payload.roomId}`).emit('room:hand-raised', {
+      roomId: payload.roomId,
+      userId,
+    });
+  }
+
+  @SubscribeMessage('room:lower-hand')
+  async onLowerHand(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    this.server.to(`room:${payload.roomId}`).emit('room:hand-lowered', {
+      roomId: payload.roomId,
+      userId,
+    });
+  }
+
+  // ── Video room: speaking indicator ──────────────────────
+
+  @SubscribeMessage('room:speaking')
+  async onSpeaking(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string; speaking: boolean },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    this.server.to(`room:${payload.roomId}`).emit('room:speaking', {
+      roomId: payload.roomId,
+      userId,
+      speaking: payload.speaking,
+    });
+  }
+
+  // ── Video room: chat ────────────────────────────────────
+
+  @SubscribeMessage('room:chat:message')
+  async onRoomChatMessage(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string; content: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    const normalizedContent = payload.content?.trim();
+    if (!normalizedContent) return;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true, fullName: true },
+    });
+
+    const message = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      roomId: payload.roomId,
+      userId,
+      content: normalizedContent,
+      createdAt: new Date().toISOString(),
+      user,
+    };
+
+    this.server.to(`room:${payload.roomId}`).emit('room:chat:message', message);
+  }
+
+  // ── Video room: state changes (mic/cam) ─────────────────
+
+  @SubscribeMessage('room:state-change')
+  async onStateChange(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string; micEnabled?: boolean; camEnabled?: boolean },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+    this.server.to(`room:${payload.roomId}`).emit('room:state-change', {
+      roomId: payload.roomId,
+      userId,
+      micEnabled: payload.micEnabled,
+      camEnabled: payload.camEnabled,
+    });
+  }
+
+  // ── Video room: moderation ──────────────────────────────
+
+  @SubscribeMessage('room:mute-peer')
+  async onMutePeer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string; targetUserId: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+
+    const room = await this.prisma.videoRoom.findUnique({ where: { id: payload.roomId } });
+    if (!room) return;
+
+    const membership = await this.prisma.courseMember.findUnique({
+      where: { courseId_userId: { courseId: room.courseId, userId } },
+    });
+    if (!membership || !MANAGE_ROLES.includes(membership.role)) return;
+
+    this.server.to(`room:${payload.roomId}`).emit('room:force-mute', {
+      roomId: payload.roomId,
+      userId: payload.targetUserId,
+    });
+  }
+
+  @SubscribeMessage('room:unmute-peer')
+  async onUnmutePeer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string; targetUserId: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+
+    const room = await this.prisma.videoRoom.findUnique({ where: { id: payload.roomId } });
+    if (!room) return;
+
+    const membership = await this.prisma.courseMember.findUnique({
+      where: { courseId_userId: { courseId: room.courseId, userId } },
+    });
+    if (!membership || !MANAGE_ROLES.includes(membership.role)) return;
+
+    this.server.to(`room:${payload.roomId}`).emit('room:force-unmute', {
+      roomId: payload.roomId,
+      userId: payload.targetUserId,
+    });
+  }
+
+  @SubscribeMessage('room:kick-peer')
+  async onKickPeer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { roomId: string; targetUserId: string },
+  ) {
+    const userId = await this.ensureSocketUser(client);
+
+    const room = await this.prisma.videoRoom.findUnique({ where: { id: payload.roomId } });
+    if (!room) return;
+
+    const membership = await this.prisma.courseMember.findUnique({
+      where: { courseId_userId: { courseId: room.courseId, userId } },
+    });
+    if (!membership || !MANAGE_ROLES.includes(membership.role)) return;
+
+    // Mark target as left
+    await this.prisma.videoRoomParticipant.updateMany({
+      where: {
+        roomId: payload.roomId,
+        userId: payload.targetUserId,
+        leftAt: null,
+      },
+      data: { leftAt: new Date() },
+    });
+
+    // Notify the target
+    this.server.to(`user:${payload.targetUserId}`).emit('room:kicked', {
+      roomId: payload.roomId,
+    });
+
+    // Broadcast updated participant list
+    const participants = await this.prisma.videoRoomParticipant.findMany({
+      where: { roomId: payload.roomId, leftAt: null },
+      include: { user: { select: { id: true, nickname: true, fullName: true } } },
+    });
+    this.server.to(`room:${payload.roomId}`).emit('room:participants', {
+      roomId: payload.roomId,
+      participants,
+    });
+  }
+
+  // ── Internal helpers ────────────────────────────────────
 
   private async ensureSocketUser(client: AuthedSocket) {
     if (!client.data.userId) {
@@ -376,13 +542,6 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     return true;
   }
 
-  private assertSocketUser(client: AuthedSocket) {
-    if (!client.data.userId) {
-      throw new ForbiddenException('Socket is not authorized');
-    }
-    return client.data.userId;
-  }
-
   private peerIdToSocketId(peerId: string) {
     const index = peerId.lastIndexOf(':');
     return index >= 0 ? peerId.slice(index + 1) : peerId;
@@ -418,6 +577,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           select: {
             id: true,
             nickname: true,
+            fullName: true,
           },
         },
       },
@@ -429,7 +589,3 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 }
-
-
-
-

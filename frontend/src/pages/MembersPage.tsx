@@ -46,7 +46,6 @@ export function MembersPage() {
           <div key={member.id} className="card-row">
             <div>
               <strong>{member.user.nickname}</strong>
-              <div className="muted">{roleLabels[member.role] ?? member.role}</div>
             </div>
             {canManage && member.user.id !== user?.id ? (
               <select value={member.role} onChange={(e) => void onRoleChange(member.user.id, e.target.value)}>

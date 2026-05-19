@@ -37,11 +37,31 @@ export class VideoService {
           select: {
             id: true,
             nickname: true,
+            fullName: true,
           },
         },
       },
       orderBy: { joinedAt: 'asc' },
     });
   }
-}
 
+  async kickParticipant(requesterId: string, roomId: string, targetUserId: string) {
+    const room = await this.prisma.videoRoom.findUnique({ where: { id: roomId } });
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    await this.access.assertCourseManager(room.courseId, requesterId);
+
+    await this.prisma.videoRoomParticipant.updateMany({
+      where: {
+        roomId,
+        userId: targetUserId,
+        leftAt: null,
+      },
+      data: { leftAt: new Date() },
+    });
+
+    return { ok: true };
+  }
+}
