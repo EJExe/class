@@ -4,6 +4,7 @@ import { MessagesService } from '../src/messages/messages.service';
 import {
   createAccessMock,
   createAuditMock,
+  createHubMock,
   createNotificationsMock,
   createPrismaMock,
   createStorageMock,
@@ -16,6 +17,7 @@ describe('MessagesService', () => {
   let notifications: ReturnType<typeof createNotificationsMock>;
   let storage: ReturnType<typeof createStorageMock>;
   let audit: ReturnType<typeof createAuditMock>;
+  let hub: ReturnType<typeof createHubMock>;
 
   beforeEach(() => {
     prisma = createPrismaMock();
@@ -23,12 +25,14 @@ describe('MessagesService', () => {
     notifications = createNotificationsMock();
     storage = createStorageMock();
     audit = createAuditMock();
+    hub = createHubMock();
     service = new MessagesService(
       prisma as any,
       access as any,
       notifications as any,
       storage as any,
       audit as any,
+      hub as any,
     );
     process.env.ADMIN_NICKNAME = 'admin';
   });

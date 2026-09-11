@@ -33,13 +33,17 @@ import { UpdateSubmissionStatusDto } from './dto/update-submission-status.dto';
 export class AssignmentsController {
   constructor(private readonly assignmentsService: AssignmentsService) {}
 
-  private setDownloadHeaders(res: any, file: { originalName: string; mimeType?: string | null }) {
+  private setFileHeaders(
+    res: any,
+    file: { originalName: string; mimeType?: string | null },
+    disposition: 'inline' | 'attachment' = 'attachment',
+  ) {
     const encodedName = encodeURIComponent(file.originalName);
     const fallbackName = file.originalName.replace(/[^\x20-\x7E]+/g, '_') || 'download';
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
+      `${disposition}; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
     );
   }
 
@@ -196,9 +200,10 @@ export class AssignmentsController {
     @CurrentUser() user: { id: string },
     @Param('id') fileId: string,
     @Res() res: any,
+    @Query('disposition') disposition?: string,
   ) {
     const file = await this.assignmentsService.getAssignmentFile(user.id, fileId);
-    this.setDownloadHeaders(res, file);
+    this.setFileHeaders(res, file, disposition === 'inline' ? 'inline' : 'attachment');
     return res.sendFile(resolve(file.path));
   }
 
@@ -254,9 +259,10 @@ export class AssignmentsController {
     @CurrentUser() user: { id: string },
     @Param('id') fileId: string,
     @Res() res: any,
+    @Query('disposition') disposition?: string,
   ) {
     const file = await this.assignmentsService.getSubmissionFile(user.id, fileId);
-    this.setDownloadHeaders(res, file);
+    this.setFileHeaders(res, file, disposition === 'inline' ? 'inline' : 'attachment');
     return res.sendFile(resolve(file.path));
   }
 

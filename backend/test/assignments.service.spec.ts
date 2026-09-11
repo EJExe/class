@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { CourseRole, NotificationType, SubmissionStatus } from '@prisma/client';
+import { AssignmentStatus, CourseRole, NotificationType, SubmissionStatus } from '@prisma/client';
 import { AssignmentsService } from '../src/assignments/assignments.service';
 import {
   createAccessMock,
@@ -168,6 +168,7 @@ describe('AssignmentsService', () => {
     access.getAssignmentAccessible.mockResolvedValue({
       id: 'assignment-1',
       title: 'Essay',
+      status: AssignmentStatus.active,
       deadlineAt: new Date(Date.now() + 60_000),
       channel: { courseId: 'course-1' },
     });
@@ -202,6 +203,7 @@ describe('AssignmentsService', () => {
     access.getAssignmentAccessible.mockResolvedValue({
       id: 'assignment-1',
       title: 'Essay',
+      status: AssignmentStatus.active,
       deadlineAt: new Date(Date.now() - 60_000),
       channel: { courseId: 'course-1' },
     });

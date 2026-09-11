@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { FilePreview } from '../components/FilePreview';
 import { UserAvatar } from '../components/UserAvatar';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -147,6 +148,13 @@ export function AssignmentPage() {
   });
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [expandedCommentFiles, setExpandedCommentFiles] = useState<Set<string>>(new Set());
+  const [previewFile, setPreviewFile] = useState<{
+    id: string;
+    name: string;
+    mimeType: string;
+    downloadPath: string;
+  } | null>(null);
+  const [localPreviewFile, setLocalPreviewFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isReviewer = ['admin', 'teacher', 'assistant'].includes(courseRole);
@@ -386,6 +394,11 @@ export function AssignmentPage() {
     event.preventDefault();
     if (!token) return;
     try {
+      if (materialFiles.length > 0) {
+        await uploadAssignmentFile(token, assignmentId, materialFiles);
+        setMaterialFiles([]);
+        if (materialInputRef.current) materialInputRef.current.value = '';
+      }
       await updateAssignment(token, assignmentId, {
         title: assignmentForm.title,
         description: assignmentForm.description,
@@ -397,14 +410,6 @@ export function AssignmentPage() {
     } catch (err) {
       setError((err as Error).message);
     }
-  };
-
-  const onUploadMaterials = async () => {
-    if (!token || materialFiles.length === 0) return;
-    await uploadAssignmentFile(token, assignmentId, materialFiles);
-    setMaterialFiles([]);
-    if (materialInputRef.current) materialInputRef.current.value = '';
-    await loadBase();
   };
 
   const onDeleteSubmissionFile = async (fileId: string, fileName: string) => {
@@ -594,6 +599,21 @@ export function AssignmentPage() {
                   {token && (
                     <button
                       className="secondary"
+                      onClick={() =>
+                        setPreviewFile({
+                          id: file.id,
+                          name: file.originalName,
+                          mimeType: file.mimeType ?? 'application/octet-stream',
+                          downloadPath: `/assignment-files/${file.id}/download`,
+                        })
+                      }
+                    >
+                      Предпросмотр
+                    </button>
+                  )}
+                  {token && (
+                    <button
+                      className="secondary"
                       onClick={() => void downloadFile(`/assignment-files/${file.id}/download`, token, file.originalName)}
                     >
                       Скачать
@@ -711,6 +731,21 @@ export function AssignmentPage() {
                               <button
                                 className="secondary"
                                 onClick={() =>
+                                  setPreviewFile({
+                                    id: file.id,
+                                    name: file.originalName,
+                                    mimeType: file.mimeType ?? 'application/octet-stream',
+                                    downloadPath: `/submission-files/${file.id}/download`,
+                                  })
+                                }
+                              >
+                                Предпросмотр
+                              </button>
+                            )}
+                            {token && (
+                              <button
+                                className="secondary"
+                                onClick={() =>
                                   void downloadFile(`/submission-files/${file.id}/download`, token, file.originalName)
                                 }
                               >
@@ -765,14 +800,29 @@ export function AssignmentPage() {
                         <div className="muted">{new Date(file.uploadedAt).toLocaleString()}</div>
                       </div>
                       {token && (
-                        <button
-                          className="secondary"
-                          onClick={() =>
-                            void downloadFile(`/submission-files/${file.id}/download`, token, file.originalName)
-                          }
-                        >
-                          Скачать
-                        </button>
+                        <div className="row" style={{ gap: 8 }}>
+                          <button
+                            className="secondary"
+                            onClick={() =>
+                              setPreviewFile({
+                                id: file.id,
+                                name: file.originalName,
+                                mimeType: file.mimeType ?? 'application/octet-stream',
+                                downloadPath: `/submission-files/${file.id}/download`,
+                              })
+                            }
+                          >
+                            Предпросмотр
+                          </button>
+                          <button
+                            className="secondary"
+                            onClick={() =>
+                              void downloadFile(`/submission-files/${file.id}/download`, token, file.originalName)
+                            }
+                          >
+                            Скачать
+                          </button>
+                        </div>
                       )}
                     </div>
                     {(file.comments ?? []).map((comment: any) => (
@@ -1223,18 +1273,48 @@ export function AssignmentPage() {
                   className="hidden-file-input"
                   type="file"
                   multiple
-                  onChange={(e) => setMaterialFiles(Array.from(e.target.files ?? []))}
+                  onChange={(e) => {
+                    const newFiles = Array.from(e.target.files ?? []);
+                    setMaterialFiles((prev) => [...prev, ...newFiles]);
+                    if (materialInputRef.current) materialInputRef.current.value = '';
+                  }}
                 />
                 <div className="file-picker-actions">
                   <button className="link-button" type="button" onClick={() => materialInputRef.current?.click()}>
                     Загрузить материалы
                   </button>
-                  {materialFiles.length > 0 && (
-                    <button className="secondary" type="button" onClick={() => void onUploadMaterials()}>
-                      Отправить файлы
-                    </button>
-                  )}
                 </div>
+                {materialFiles.length > 0 && (
+                  <div className="col" style={{ gap: 4 }}>
+                    {materialFiles.map((file, index) => (
+                      <div key={index} className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="muted">{file.name}</span>
+                        <div className="row" style={{ gap: 4 }}>
+                          <button
+                            className="secondary"
+                            style={{ fontSize: 14 }}
+                            type="button"
+                            onClick={() => setLocalPreviewFile(file)}
+                            title="Предпросмотр"
+                          >
+                            <i className="bi bi-search" />
+                          </button>
+                          <button
+                            className="secondary"
+                            style={{ color: 'var(--danger)', fontSize: 14 }}
+                            type="button"
+                            onClick={() => {
+                              setMaterialFiles((prev) => prev.filter((_, i) => i !== index));
+                            }}
+                            title="Убрать из списка"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="row" style={{ justifyContent: 'flex-end' }}>
                   <button type="button" className="secondary" onClick={() => setIsManageModalOpen(false)}>
                     Отмена
@@ -1248,6 +1328,29 @@ export function AssignmentPage() {
       )}
 
       {error && <p className="error-text">{error}</p>}
+
+      {previewFile && token && (
+        <FilePreview
+          fileId={previewFile.id}
+          fileName={previewFile.name}
+          mimeType={previewFile.mimeType}
+          downloadPath={previewFile.downloadPath}
+          token={token}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
+
+      {localPreviewFile && token && (
+        <FilePreview
+          fileId="local"
+          fileName={localPreviewFile.name}
+          mimeType={localPreviewFile.type || 'application/octet-stream'}
+          downloadPath=""
+          token={token}
+          localFile={localPreviewFile}
+          onClose={() => setLocalPreviewFile(null)}
+        />
+      )}
     </div>
   );
 }

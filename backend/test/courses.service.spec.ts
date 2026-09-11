@@ -181,7 +181,7 @@ describe('CoursesService', () => {
 
     const result = await service.getUserCourses('user-1');
 
-    expect(result[0].hasUnread).toBe(true);
+    expect(result.items[0].hasUnread).toBe(true);
   });
 
   it('allows only admins to export course CSV', async () => {

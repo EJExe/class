@@ -22,6 +22,7 @@ export function createPrismaMock() {
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     courseGroup: {
       create: jest.fn(),
@@ -153,5 +154,8 @@ export function createAuditMock() {
 export function createHubMock() {
   return {
     emitToUser: jest.fn(),
+    server: {
+      to: jest.fn().mockReturnValue({ emit: jest.fn() }),
+    },
   };
 }

@@ -58,6 +58,20 @@ export async function apiRequest<T>(
   return (await response.text()) as T;
 }
 
+export async function fetchFileBlob(path: string, token: string): Promise<{ blob: Blob; mimeType: string }> {
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Fetch failed: ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const mimeType = response.headers.get('content-type') ?? 'application/octet-stream';
+  return { blob, mimeType };
+}
+
 export async function downloadFile(path: string, token: string, fileName: string) {
   const response = await fetch(`${API_URL}${path}`, {
     headers: {

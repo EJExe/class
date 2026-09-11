@@ -326,6 +326,90 @@ button.danger {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
 }
 
+/* File preview modal */
+.preview-modal {
+  width: min(85vw, 1100px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.preview-body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0 0;
+  min-height: 200px;
+}
+.preview-body .preview-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+.preview-body .preview-iframe {
+  width: 100%;
+  height: 70vh;
+  border: none;
+}
+.preview-body .preview-pre {
+  width: 100%;
+  max-height: 70vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  background: var(--bg);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.preview-body .preview-audio {
+  max-width: 100%;
+  min-width: 320px;
+}
+.preview-body .preview-video {
+  max-width: 100%;
+  max-height: 70vh;
+}
+.preview-docx-wrapper {
+  min-height: 200px;
+}
+.preview-excel-wrapper {
+  min-height: 200px;
+  overflow: auto;
+}
+.preview-excel-wrapper table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.preview-excel-wrapper td,
+.preview-excel-wrapper th {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.preview-excel-wrapper th {
+  background: var(--bg);
+  font-weight: 600;
+}
+.preview-unsupported {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
 .video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

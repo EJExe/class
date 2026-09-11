@@ -1,0 +1,39 @@
+======================================================================
+IMAGE MAP: ppt/media/* -> extracted_images/*
+======================================================================
+
+Original                       Extracted                       Size   Dimensions
+----------------------------------------------------------------------
+ppt/media/image1.png           image1.png                   156,699      978x863
+ppt/media/image10.png          image10.png                  230,391    1673x1023
+ppt/media/image11.png          image11.png                   93,993     1294x870
+ppt/media/image12.png          image12.png                   20,288      608x339
+ppt/media/image13.png          image13.png                  255,879    1378x1029
+ppt/media/image14.png          image14.png                   96,665    1165x1051
+ppt/media/image15.png          image15.png                   13,574      407x165
+ppt/media/image16.png          image16.png                   23,904     1032x215
+ppt/media/image17.png          image17.png                   19,687      506x372
+ppt/media/image18.png          image18.png                   13,404      668x155
+ppt/media/image19.png          image19.png                   33,286     1030x448
+ppt/media/image2.png           image2.png                    52,516     1094x898
+ppt/media/image20.png          image20.png                   83,261      295x421
+ppt/media/image21.png          image21.png                  138,980     1025x451
+ppt/media/image22.png          image22.png                   59,358     1031x771
+ppt/media/image23.png          image23.png                   34,112     1028x414
+ppt/media/image24.png          image24.png                   39,667     1024x620
+ppt/media/image25.png          image25.png                   59,301     1026x673
+ppt/media/image26.png          image26.png                   45,013     1022x942
+ppt/media/image27.png          image27.png                   29,537     1023x330
+ppt/media/image28.png          image28.png                   57,273     1023x643
+ppt/media/image29.png          image29.png                   29,620     1028x309
+ppt/media/image3.png           image3.png                   231,428     1568x849
+ppt/media/image30.png          image30.png                   67,602     1023x606
+ppt/media/image31.jpeg         image31.jpeg                 137,890     1360x532
+ppt/media/image32.jpeg         image32.jpeg                 124,471     1475x486
+ppt/media/image33.png          image33.png                  156,916      894x938
+ppt/media/image4.png           image4.png                   417,870    1424x1386
+ppt/media/image5.png           image5.png                    25,014     1042x410
+ppt/media/image6.png           image6.png                    74,120     1226x894
+ppt/media/image7.png           image7.png                    23,878      298x797
+ppt/media/image8.png           image8.png                    24,108      453x527
+ppt/media/image9.png           image9.png                   178,231    1836x1011
